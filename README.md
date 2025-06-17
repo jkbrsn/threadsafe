@@ -2,6 +2,8 @@
 
 The threadsafe package provides thread-safe operations for various Go types.
 
+The interfaces provided by the package are generic, and attempt to be quite exhaustive feature wise. If you need a more minimal interface for your application, create it as needed.
+
 ## Install
 
 ```bash
