@@ -1,7 +1,6 @@
 # todo
 
-- Add Map
-  - sync.Map implementation
-  - sync.Mutex implementation
+- Slice alternative implementation?
+- Map sync.Mutex implementation
 - Add Queue
 - Add Heap
