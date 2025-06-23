@@ -178,6 +178,17 @@ func TestMapImplementations(t *testing.T) {
 			runMapTestSuite(t, suite)
 		})
 
+		t.Run("RWMutexMap", func(t *testing.T) {
+			suite := &mapTestSuite[string, int]{
+				newMap: func() Map[string, int] {
+					return NewRWMutexMap[string](func(a, b int) bool { return a == b })
+				},
+				key1: "one", key2: "two", key3: "three",
+				val1: 1, val2: 2, val3: 3,
+			}
+			runMapTestSuite(t, suite)
+		})
+
 		t.Run("SyncMap", func(t *testing.T) {
 			suite := &mapTestSuite[string, int]{
 				newMap: func() Map[string, int] {
@@ -201,6 +212,17 @@ func TestMapImplementations(t *testing.T) {
 			suite := &mapTestSuite[int, testStruct]{
 				newMap: func() Map[int, testStruct] {
 					return NewMutexMap[int](equalFunc)
+				},
+				key1: 1, key2: 2, key3: 3,
+				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			}
+			runMapTestSuite(t, suite)
+		})
+
+		t.Run("RWMutexMap", func(t *testing.T) {
+			suite := &mapTestSuite[int, testStruct]{
+				newMap: func() Map[int, testStruct] {
+					return NewRWMutexMap[int](equalFunc)
 				},
 				key1: 1, key2: 2, key3: 3,
 				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
@@ -263,6 +285,13 @@ func TestConcurrentAccess(t *testing.T) {
 				return NewMutexMap[string](func(a, b int) bool { return a == b })
 			},
 		},
+		{
+			name: "RWMutexMap",
+			newMap: func() Map[string, int] {
+				return NewRWMutexMap[string](func(a, b int) bool { return a == b })
+			},
+		},
+
 		{
 			name: "SyncMap",
 			newMap: func() Map[string, int] {
