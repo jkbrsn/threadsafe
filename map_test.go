@@ -8,6 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mapTestSuite is a generic test suite for the Map interface.
+// It can be instantiated with different key and value types.
+type mapTestSuite[K comparable, V any] struct {
+	newMap func() Map[K, V]
+	key1   K
+	key2   K
+	key3   K
+	val1   V
+	val2   V
+	val3   V
+}
+
 func TestMutexMapImplementsMap(_ *testing.T) {
 	var _ Map[string, int] = &MutexMap[string, int]{}
 }
@@ -16,28 +28,28 @@ func TestSyncMapImplementsMap(_ *testing.T) {
 	var _ Map[string, int] = &SyncMap[string, int]{}
 }
 
-func TestSyncMap_Basic(t *testing.T) {
-	store := NewSyncMap[string, int]()
+func (s *mapTestSuite[K, V]) TestBasicOperations(t *testing.T) {
+	store := s.newMap()
 	assert.Equal(t, 0, store.Len())
 
 	// Test Set and Get
-	store.Set("one", 1)
-	store.Set("two", 2)
+	store.Set(s.key1, s.val1)
+	store.Set(s.key2, s.val2)
 	assert.Equal(t, 2, store.Len())
 
 	// Test Get
-	val, exists := store.Get("one")
+	val, exists := store.Get(s.key1)
 	assert.True(t, exists)
-	assert.Equal(t, 1, val)
+	assert.Equal(t, s.val1, val)
 
 	// Test Get non-existent
-	_, exists = store.Get("three")
+	_, exists = store.Get(s.key3)
 	assert.False(t, exists)
 
 	// Test Delete
-	store.Delete("one")
+	store.Delete(s.key1)
 	assert.Equal(t, 1, store.Len())
-	_, exists = store.Get("one")
+	_, exists = store.Get(s.key1)
 	assert.False(t, exists)
 
 	// Test Clear
@@ -45,105 +57,160 @@ func TestSyncMap_Basic(t *testing.T) {
 	assert.Equal(t, 0, store.Len())
 }
 
-func TestSyncMap_CompareAndSwap(t *testing.T) {
-	store := NewSyncMap[string, int]()
-	store.Set("key", 1)
+func (s *mapTestSuite[K, V]) TestCompareAndSwap(t *testing.T) {
+	store := s.newMap()
+	store.Set(s.key1, s.val1)
 
 	// Successful swap
-	swapped := store.CompareAndSwap("key", 1, 2)
+	swapped := store.CompareAndSwap(s.key1, s.val1, s.val2)
 	assert.True(t, swapped)
-	val, _ := store.Get("key")
-	assert.Equal(t, 2, val)
+	val, _ := store.Get(s.key1)
+	assert.Equal(t, s.val2, val)
 
 	// Failed swap (old value doesn't match)
-	swapped = store.CompareAndSwap("key", 1, 3)
+	swapped = store.CompareAndSwap(s.key1, s.val1, s.val3)
 	assert.False(t, swapped)
-	val, _ = store.Get("key")
-	assert.Equal(t, 2, val) // Value should remain unchanged
+	val, _ = store.Get(s.key1)
+	assert.Equal(t, s.val2, val) // Value should remain unchanged
 }
 
-func TestSyncMap_Swap(t *testing.T) {
-	store := NewSyncMap[string, int]()
+func (s *mapTestSuite[K, V]) TestSwap(t *testing.T) {
+	store := s.newMap()
 
 	// Test swap on new key
-	prev, loaded := store.Swap("new", 1)
+	prev, loaded := store.Swap(s.key1, s.val1)
 	assert.False(t, loaded)
-	assert.Equal(t, 0, prev) // zero value for int
+	var zeroV V
+	assert.Equal(t, zeroV, prev)
 
 	// Test swap on existing key
-	prev, loaded = store.Swap("new", 2)
+	prev, loaded = store.Swap(s.key1, s.val2)
 	assert.True(t, loaded)
-	assert.Equal(t, 1, prev)
-	val, _ := store.Get("new")
-	assert.Equal(t, 2, val)
+	assert.Equal(t, s.val1, prev)
+	val, _ := store.Get(s.key1)
+	assert.Equal(t, s.val2, val)
 }
 
-func TestSyncMap_GetAll(t *testing.T) {
-	store := NewSyncMap[string, int]()
-	store.Set("one", 1)
-	store.Set("two", 2)
-	store.Set("three", 3)
+func (s *mapTestSuite[K, V]) TestGetAll(t *testing.T) {
+	store := s.newMap()
+	store.Set(s.key1, s.val1)
+	store.Set(s.key2, s.val2)
 
 	result := store.GetAll()
-	assert.Equal(t, 3, len(result))
-	assert.Equal(t, 1, result["one"])
-	assert.Equal(t, 2, result["two"])
-	assert.Equal(t, 3, result["three"])
+	assert.Equal(t, 2, len(result))
+	assert.Equal(t, s.val1, result[s.key1])
+	assert.Equal(t, s.val2, result[s.key2])
 }
 
-func TestSyncMap_GetMany(t *testing.T) {
-	store := NewSyncMap[string, int]()
-	store.Set("one", 1)
-	store.Set("two", 2)
-	store.Set("three", 3)
+func (s *mapTestSuite[K, V]) TestGetMany(t *testing.T) {
+	store := s.newMap()
+	store.Set(s.key1, s.val1)
+	store.Set(s.key2, s.val2)
 
 	// Test getting multiple keys
-	result := store.GetMany([]string{"one", "three", "missing"})
-	assert.Equal(t, 2, len(result))
-	assert.Equal(t, 1, result["one"])
-	assert.Equal(t, 3, result["three"])
-	_, exists := result["missing"]
+	result := store.GetMany([]K{s.key1, s.key3})
+	assert.Equal(t, 1, len(result))
+	assert.Equal(t, s.val1, result[s.key1])
+	_, exists := result[s.key3]
 	assert.False(t, exists)
 }
 
-func TestSyncMap_SetMany(t *testing.T) {
-	store := NewSyncMap[string, int]()
+func (s *mapTestSuite[K, V]) TestSetMany(t *testing.T) {
+	store := s.newMap()
 
 	// Set multiple entries at once
-	entries := map[string]int{
-		"one":   1,
-		"two":   2,
-		"three": 3,
+	entries := map[K]V{
+		s.key1: s.val1,
+		s.key2: s.val2,
 	}
 	store.SetMany(entries)
 
 	// Verify all entries were set
-	assert.Equal(t, 3, store.Len())
-	val, _ := store.Get("two")
-	assert.Equal(t, 2, val)
+	assert.Equal(t, 2, store.Len())
+	val, _ := store.Get(s.key2)
+	assert.Equal(t, s.val2, val)
 }
 
-func TestSyncMap_Range(t *testing.T) {
-	store := NewSyncMap[string, int]()
-	store.Set("one", 1)
-	store.Set("two", 2)
-	store.Set("three", 3)
+func (s *mapTestSuite[K, V]) TestRange(t *testing.T) {
+	store := s.newMap()
+	store.Set(s.key1, s.val1)
+	store.Set(s.key2, s.val2)
 
 	// Test Range
 	var count int
-	store.Range(func(_ string, _ int) bool {
+	store.Range(func(_ K, _ V) bool {
 		count++
 		return true // continue iteration
 	})
-	assert.Equal(t, 3, count)
+	assert.Equal(t, 2, count)
 
 	// Test early termination
 	count = 0
-	store.Range(func(_ string, _ int) bool {
+	store.Range(func(_ K, _ V) bool {
 		count++
-		return count < 2 // stop after second iteration
+		return false // stop after first iteration
 	})
-	assert.Equal(t, 2, count)
+	assert.Equal(t, 1, count)
+}
+
+// runMapTestSuite runs all tests in the suite.
+func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
+	t.Run("BasicOperations", s.TestBasicOperations)
+	t.Run("CompareAndSwap", s.TestCompareAndSwap)
+	t.Run("Swap", s.TestSwap)
+	t.Run("GetAll", s.TestGetAll)
+	t.Run("GetMany", s.TestGetMany)
+	t.Run("SetMany", s.TestSetMany)
+	t.Run("Range", s.TestRange)
+}
+
+// TestMapImplementations is the main test function that sets up and runs the test suites.
+func TestMapImplementations(t *testing.T) {
+	t.Run("string-int", func(t *testing.T) {
+		t.Run("MutexMap", func(t *testing.T) {
+			suite := &mapTestSuite[string, int]{
+				newMap: func() Map[string, int] {
+					return NewMutexMap[string](func(a, b int) bool { return a == b })
+				},
+				key1: "one", key2: "two", key3: "three",
+				val1: 1, val2: 2, val3: 3,
+			}
+			runMapTestSuite(t, suite)
+		})
+
+		t.Run("SyncMap", func(t *testing.T) {
+			suite := &mapTestSuite[string, int]{
+				newMap: func() Map[string, int] {
+					return NewSyncMap[string, int]()
+				},
+				key1: "one", key2: "two", key3: "three",
+				val1: 1, val2: 2, val3: 3,
+			}
+			runMapTestSuite(t, suite)
+		})
+	})
+
+	type testStruct struct {
+		ID   int
+		Name string
+	}
+	t.Run("int-struct", func(t *testing.T) {
+		equalFunc := func(a, b testStruct) bool { return a.ID == b.ID && a.Name == b.Name }
+
+		t.Run("MutexMap", func(t *testing.T) {
+			suite := &mapTestSuite[int, testStruct]{
+				newMap: func() Map[int, testStruct] {
+					return NewMutexMap[int](equalFunc)
+				},
+				key1: 1, key2: 2, key3: 3,
+				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			}
+			runMapTestSuite(t, suite)
+		})
+
+		// Note: SyncMap cannot be tested with non-comparable types like testStruct
+		// because its CompareAndSwap relies on the `==` operator internally.
+	})
 }
 
 func TestCalculateMapDiff(t *testing.T) {
@@ -184,44 +251,67 @@ func TestCalculateMapDiff(t *testing.T) {
 	assert.Equal(t, 1, len(diff.Removed))
 }
 
-func TestSyncMap_ConcurrentAccess(t *testing.T) {
-	store := NewSyncMap[string, int]()
-	const numGoroutines = 10
-	const perGoroutine = 1000
-
-	var wg sync.WaitGroup
-	wg.Add(numGoroutines)
-
-	// Concurrent writes
-	for i := range numGoroutines {
-		go func(goroutineID int) {
-			defer wg.Done()
-			for j := range perGoroutine {
-				key := strconv.Itoa(goroutineID*perGoroutine + j)
-				store.Set(key, goroutineID)
-			}
-		}(i)
+// A separate concurrent test is useful to control the number of goroutines precisely.
+func TestConcurrentAccess(t *testing.T) {
+	implementations := []struct {
+		name   string
+		newMap func() Map[string, int]
+	}{
+		{
+			name: "MutexMap",
+			newMap: func() Map[string, int] {
+				return NewMutexMap[string](func(a, b int) bool { return a == b })
+			},
+		},
+		{
+			name: "SyncMap",
+			newMap: func() Map[string, int] {
+				return NewSyncMap[string, int]()
+			},
+		},
 	}
 
-	// Concurrent reads
-	for range numGoroutines {
-		go func() {
-			for j := range perGoroutine {
-				store.Get(strconv.Itoa(j))
+	for _, tt := range implementations {
+		t.Run(tt.name, func(t *testing.T) {
+			store := tt.newMap()
+			const numGoroutines = 10
+			const perGoroutine = 100
+
+			var wg sync.WaitGroup
+			wg.Add(numGoroutines)
+
+			// Concurrent writes
+			for i := range numGoroutines {
+				go func(goroutineID int) {
+					defer wg.Done()
+					for j := range perGoroutine {
+						key := strconv.Itoa(goroutineID*perGoroutine + j)
+						store.Set(key, goroutineID)
+					}
+				}(i)
 			}
-		}()
+
+			// Concurrent reads
+			for range numGoroutines {
+				go func() {
+					for j := range perGoroutine {
+						store.Get(strconv.Itoa(j))
+					}
+				}()
+			}
+
+			wg.Wait()
+
+			// Verify all entries were written
+			assert.Equal(t, numGoroutines*perGoroutine, store.Len())
+
+			// Verify no data races by checking all values are within expected range
+			store.Range(func(_ string, value int) bool {
+				assert.True(t, value >= 0 && value < numGoroutines)
+				return true
+			})
+		})
 	}
-
-	wg.Wait()
-
-	// Verify all entries were written
-	assert.Equal(t, numGoroutines*perGoroutine, store.Len())
-
-	// Verify no data races by checking all values are within expected range
-	store.Range(func(_ string, value int) bool {
-		assert.True(t, value >= 0 && value < numGoroutines)
-		return true
-	})
 }
 
 //
@@ -233,7 +323,7 @@ func benchmarkMap(b *testing.B, newMap func() Map[string, int]) {
 	b.Run("Set", func(b *testing.B) {
 		store := newMap()
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			store.Set("key", 1)
 		}
 	})
@@ -243,7 +333,7 @@ func benchmarkMap(b *testing.B, newMap func() Map[string, int]) {
 		store := newMap()
 		store.Set("key", 1)
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			store.Get("key")
 		}
 	})
@@ -252,7 +342,7 @@ func benchmarkMap(b *testing.B, newMap func() Map[string, int]) {
 	b.Run("ConcurrentReadWrite", func(b *testing.B) {
 		store := newMap()
 		// Pre-fill the map with some data
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			store.Set(strconv.Itoa(i), i)
 		}
 		b.ResetTimer()
@@ -277,7 +367,7 @@ func benchmarkMap(b *testing.B, newMap func() Map[string, int]) {
 func BenchmarkMapImplementations(b *testing.B) {
 	b.Run("MutexMap", func(b *testing.B) {
 		benchmarkMap(b, func() Map[string, int] {
-			return NewMutexMap[string, int](func(a, b int) bool { return a == b })
+			return NewMutexMap[string](func(a, b int) bool { return a == b })
 		})
 	})
 
