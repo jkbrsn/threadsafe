@@ -400,6 +400,12 @@ func BenchmarkMapImplementations(b *testing.B) {
 		})
 	})
 
+	b.Run("RWMutexMap", func(b *testing.B) {
+		benchmarkMap(b, func() Map[string, int] {
+			return NewRWMutexMap[string](func(a, b int) bool { return a == b })
+		})
+	})
+
 	b.Run("SyncMap", func(b *testing.B) {
 		benchmarkMap(b, func() Map[string, int] {
 			return NewSyncMap[string, int]()
