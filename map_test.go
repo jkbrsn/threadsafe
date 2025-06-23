@@ -8,8 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMutexMapImplementsMap(_ *testing.T) {
+	var _ Map[string, int] = &MutexMap[string, int]{}
+}
+
 func TestSyncMapImplementsMap(_ *testing.T) {
-	var _ Map[string, int] = NewSyncMap[string, int]()
+	var _ Map[string, int] = &SyncMap[string, int]{}
 }
 
 func TestSyncMap_Basic(t *testing.T) {
@@ -217,5 +221,69 @@ func TestSyncMap_ConcurrentAccess(t *testing.T) {
 	store.Range(func(_ string, value int) bool {
 		assert.True(t, value >= 0 && value < numGoroutines)
 		return true
+	})
+}
+
+//
+// BENCHMARKS
+//
+
+func benchmarkMap(b *testing.B, newMap func() Map[string, int]) {
+	// Simple write benchmark
+	b.Run("Set", func(b *testing.B) {
+		store := newMap()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			store.Set("key", 1)
+		}
+	})
+
+	// Simple read benchmark
+	b.Run("Get", func(b *testing.B) {
+		store := newMap()
+		store.Set("key", 1)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			store.Get("key")
+		}
+	})
+
+	// Concurrent workload (90% reads, 10% writes)
+	b.Run("ConcurrentReadWrite", func(b *testing.B) {
+		store := newMap()
+		// Pre-fill the map with some data
+		for i := 0; i < 1000; i++ {
+			store.Set(strconv.Itoa(i), i)
+		}
+		b.ResetTimer()
+
+		b.RunParallel(func(pb *testing.PB) {
+			i := 0
+			for pb.Next() {
+				// Generate a key to operate on
+				key := strconv.Itoa(i % 1000)
+				// 90% read, 10% write
+				if i%10 == 0 {
+					store.Set(key, i)
+				} else {
+					store.Get(key)
+				}
+				i++
+			}
+		})
+	})
+}
+
+func BenchmarkMapImplementations(b *testing.B) {
+	b.Run("MutexMap", func(b *testing.B) {
+		benchmarkMap(b, func() Map[string, int] {
+			return NewMutexMap[string, int](func(a, b int) bool { return a == b })
+		})
+	})
+
+	b.Run("SyncMap", func(b *testing.B) {
+		benchmarkMap(b, func() Map[string, int] {
+			return NewSyncMap[string, int]()
+		})
 	})
 }
