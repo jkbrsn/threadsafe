@@ -12,6 +12,7 @@ explain:
 	@echo "Targets:"
 	@echo "  test             - Run tests."
 	@echo "  test-race        - Run tests for race conditions."
+	@echo "  bench            - Run benchmarks."
 	@echo "  lint             - Run golangci-lint, including multiple linters (see .golangci.yml)."
 	@echo "  explain          - Display this help message."
 
@@ -31,6 +32,10 @@ test:
 test-race:
 	@echo "==> Running race tests..."
 	@go test -count=$(N) $(TEST_FLAGS) -race ./...
+
+bench:
+	@echo "==> Running benchmarks..."
+	@go test -count=$(N) $(TEST_FLAGS) -bench=. -benchmem -benchtime=5s ./...
 
 lint:
 	@echo "==> Running golangci-lint..."
