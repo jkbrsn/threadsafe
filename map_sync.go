@@ -4,8 +4,12 @@ package threadsafe
 import "sync"
 
 // SyncMap is a thread-safe implementation of Map using sync.Map.
+// Note: the internal implementation of sync.Map requires a comparable type to run the
+// CompareAndSwap operation. To circumvent this, attach an equal function to the map
+// upon creation.
 type SyncMap[K comparable, V any] struct {
 	values sync.Map
+	equal  func(V, V) bool
 }
 
 // Get retrieves the value for the given key.
@@ -49,7 +53,23 @@ func (s *SyncMap[K, V]) Clear() {
 
 // CompareAndSwap executes the compare-and-swap operation for a key.
 func (s *SyncMap[K, V]) CompareAndSwap(key K, oldValue, newValue V) bool {
+	current, exists := s.Get(key)
+	if !exists {
+		// Handle case where key doesn't exist
+		return false
+	}
+
+	if s.equal != nil {
+		if s.equal(current, oldValue) {
+			s.values.Store(key, newValue)
+			return true
+		}
+		return false
+	}
+
+	// Fall back on sync.Map.CompareAndSwap, which will panic if V is not comparable
 	return s.values.CompareAndSwap(key, oldValue, newValue)
+
 }
 
 // Swap swaps the value for a key and returns the previous value if any.
@@ -104,7 +124,10 @@ func (s *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	})
 }
 
-// NewSyncMap creates a new instance of SyncMap.
-func NewSyncMap[K comparable, V any]() *SyncMap[K, V] {
-	return &SyncMap[K, V]{}
+// NewSyncMap creates a new instance of SyncMap. The equalFn parameter is required to
+// decide how two values of type V are compared, but can be nil if V is comparable.
+func NewSyncMap[K comparable, V any](equalFn func(V, V) bool) *SyncMap[K, V] {
+	return &SyncMap[K, V]{
+		equal: equalFn,
+	}
 }

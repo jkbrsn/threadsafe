@@ -145,9 +145,9 @@ func (m *RWMutexMap[K, V]) Range(f func(key K, value V) bool) {
 }
 
 // NewRWMutexMap creates a new instance of RWMutexMap.
-func NewRWMutexMap[K comparable, V any](equal func(V, V) bool) *RWMutexMap[K, V] {
+func NewRWMutexMap[K comparable, V any](equalFn func(V, V) bool) *RWMutexMap[K, V] {
 	return &RWMutexMap[K, V]{
-		equal:  equal,
+		equal:  equalFn,
 		values: make(map[K]V),
 	}
 }

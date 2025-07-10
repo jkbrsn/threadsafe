@@ -196,7 +196,18 @@ func TestMapImplementations(t *testing.T) {
 		t.Run("SyncMap", func(t *testing.T) {
 			suite := &mapTestSuite[string, int]{
 				newMap: func() Map[string, int] {
-					return NewSyncMap[string, int]()
+					return NewSyncMap[string](func(a, b int) bool { return a == b })
+				},
+				key1: "one", key2: "two", key3: "three",
+				val1: 1, val2: 2, val3: 3,
+			}
+			runMapTestSuite(t, suite)
+		})
+
+		t.Run("SyncMap (nil equalFn for comparable V)", func(t *testing.T) {
+			suite := &mapTestSuite[string, int]{
+				newMap: func() Map[string, int] {
+					return NewSyncMap[string, int](nil)
 				},
 				key1: "one", key2: "two", key3: "three",
 				val1: 1, val2: 2, val3: 3,
@@ -234,8 +245,16 @@ func TestMapImplementations(t *testing.T) {
 			runMapTestSuite(t, suite)
 		})
 
-		// Note: SyncMap cannot be tested with non-comparable types like testStruct
-		// because its CompareAndSwap relies on the `==` operator internally.
+		t.Run("SyncMap", func(t *testing.T) {
+			suite := &mapTestSuite[int, testStruct]{
+				newMap: func() Map[int, testStruct] {
+					return NewSyncMap[int, testStruct](equalFunc)
+				},
+				key1: 1, key2: 2, key3: 3,
+				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			}
+			runMapTestSuite(t, suite)
+		})
 	})
 }
 
@@ -299,7 +318,7 @@ func TestConcurrentAccess(t *testing.T) {
 		{
 			name: "SyncMap",
 			newMap: func() Map[string, int] {
-				return NewSyncMap[string, int]()
+				return NewSyncMap[string](func(a, b int) bool { return a == b })
 			},
 		},
 	}
@@ -412,7 +431,7 @@ func BenchmarkMapImplementations(b *testing.B) {
 
 	b.Run("SyncMap", func(b *testing.B) {
 		benchmarkMap(b, func() Map[string, int] {
-			return NewSyncMap[string, int]()
+			return NewSyncMap[string](func(a, b int) bool { return a == b })
 		})
 	})
 }
