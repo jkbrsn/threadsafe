@@ -24,6 +24,10 @@ func TestMutexMapImplementsMap(_ *testing.T) {
 	var _ Map[string, int] = &MutexMap[string, int]{}
 }
 
+func TestRWMutexMapImplementsMap(_ *testing.T) {
+	var _ Map[string, int] = &RWMutexMap[string, int]{}
+}
+
 func TestSyncMapImplementsMap(_ *testing.T) {
 	var _ Map[string, int] = &SyncMap[string, int]{}
 }
