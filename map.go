@@ -4,27 +4,36 @@ package threadsafe
 // Map is a generic interface for stores with any type V.
 // It allows concurrent appends and atomic flushes.
 type Map[K comparable, V any] interface {
-	// Basic operations
-	Get(key K) (V, bool) // Returns value and existence flag
+	// Get retrieves the value for the given key.
+	Get(key K) (V, bool)
+	// Set stores a value for the given key.
 	Set(key K, value V)
+	// Delete removes the key from the map.
 	Delete(key K)
+	// Len returns the number of items in the map.
 	Len() int
+	// Clear removes all items from the map.
 	Clear()
 
-	// Conditional operations
+	// CompareAndSwap executes the compare-and-swap operation for a key.
 	CompareAndSwap(key K, oldValue, newValue V) bool
+	// Swap swaps the value for a key and returns the previous value if any.
 	Swap(key K, value V) (previous V, loaded bool)
 
-	// Batch operations
+	// GetAll returns all key-value pairs in the map.
 	GetAll() map[K]V
+	// GetMany retrieves select key-value pairs.
 	GetMany(keys []K) map[K]V
+	// SetMany sets multiple key-value pairs.
 	SetMany(entries map[K]V)
 
-	// Comparison
+	// Equals reports whether the logical content of this map and the other map is the same.
+	// Requires an equal function since V is not of type comparable.
 	Equals(other Map[K, V], equalFn func(a, b V) bool) bool
 
-	// Iteration
-	Range(func(key K, value V) bool)
+	// Range calls f sequentially for each key and value present in the map.
+	// If f returns false, range stops the iteration.
+	Range(f func(key K, value V) bool)
 }
 
 // MapDiff represents the difference between two maps.
