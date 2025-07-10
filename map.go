@@ -20,6 +20,9 @@ type Map[K comparable, V any] interface {
 	GetMany(keys []K) map[K]V
 	SetMany(entries map[K]V)
 
+	// Comparison
+	Equals(other Map[K, V], equalFn func(a, b V) bool) bool
+
 	// Iteration
 	Range(func(key K, value V) bool)
 }
@@ -57,4 +60,32 @@ func CalculateMapDiff[K comparable, V any](
 	}
 
 	return diff
+}
+
+// equals reports whether the logical content of two maps is the same. The comparison method is
+// based on the equalFn provided.
+func equals[K comparable, V any](
+	a, b Map[K, V],
+	equalFn func(V, V) bool) bool {
+
+	// Fast paths: check object pointers and lengths
+	if &a == &b {
+		return true
+	}
+	if a.Len() != b.Len() {
+		return false
+	}
+
+	// Snapshot each map once to avoid races and keep O(n) complexity
+	am := a.GetAll()
+	bm := b.GetAll()
+
+	// Compare key-value pairs
+	for k, av := range am {
+		bv, ok := bm[k]
+		if !ok || !equalFn(av, bv) {
+			return false
+		}
+	}
+	return true
 }

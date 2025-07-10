@@ -125,6 +125,12 @@ func (m *RWMutexMap[K, V]) SetMany(entries map[K]V) {
 	maps.Copy(m.values, entries)
 }
 
+// Equals reports whether the logical content of this map and the other map is the same. Requires
+// equalFn to be provided to decide how two values of type V are compared.
+func (m *RWMutexMap[K, V]) Equals(other Map[K, V], equalFn func(a, b V) bool) bool {
+	return equals(m, other, equalFn)
+}
+
 // Range calls f sequentially for each key and value present in the map.
 // If f returns false, range stops the iteration.
 func (m *RWMutexMap[K, V]) Range(f func(key K, value V) bool) {
