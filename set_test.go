@@ -132,7 +132,7 @@ func (s *setTestSuite[T]) TestSliceImmutability(t *testing.T) {
 	if len(slice) > 0 {
 		// We can't directly modify slice elements since we don't know the zero value,
 		// but we can verify the slice length doesn't change the set
-		slice = append(slice, slice[0]) // Add a duplicate
+		_ = append(slice, slice[0]) // Add a duplicate
 	}
 
 	// Verify original set is unchanged
@@ -226,6 +226,45 @@ func TestSetImplementations(t *testing.T) {
 	})
 }
 
+// testConcurrentSetAccess tests a set implementation for concurrent access safety.
+func testConcurrentSetAccess(t *testing.T, set Set[string]) {
+	const numGoroutines = 10
+	const perGoroutine = 100
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Concurrent writes
+	for i := range numGoroutines {
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := range perGoroutine {
+				item := strconv.Itoa(goroutineID*perGoroutine + j)
+				set.Add(item)
+			}
+		}(i)
+	}
+
+	// Concurrent reads
+	for range numGoroutines {
+		go func() {
+			for j := range perGoroutine {
+				set.Has(strconv.Itoa(j))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify all entries were written
+	assert.Equal(t, numGoroutines*perGoroutine, set.Len())
+
+	// Verify no data races by checking all items are present
+	for i := 0; i < numGoroutines*perGoroutine; i++ {
+		assert.True(t, set.Has(strconv.Itoa(i)), "Item %d should be present", i)
+	}
+}
+
 // A separate concurrent test is useful to control the number of goroutines precisely.
 func TestSetConcurrentAccess(t *testing.T) {
 	implementations := []struct {
@@ -248,42 +287,7 @@ func TestSetConcurrentAccess(t *testing.T) {
 
 	for _, tt := range implementations {
 		t.Run(tt.name, func(t *testing.T) {
-			set := tt.newSet()
-			const numGoroutines = 10
-			const perGoroutine = 100
-
-			var wg sync.WaitGroup
-			wg.Add(numGoroutines)
-
-			// Concurrent writes
-			for i := range numGoroutines {
-				go func(goroutineID int) {
-					defer wg.Done()
-					for j := range perGoroutine {
-						item := strconv.Itoa(goroutineID*perGoroutine + j)
-						set.Add(item)
-					}
-				}(i)
-			}
-
-			// Concurrent reads
-			for range numGoroutines {
-				go func() {
-					for j := range perGoroutine {
-						set.Has(strconv.Itoa(j))
-					}
-				}()
-			}
-
-			wg.Wait()
-
-			// Verify all entries were written
-			assert.Equal(t, numGoroutines*perGoroutine, set.Len())
-
-			// Verify no data races by checking all items are present
-			for i := 0; i < numGoroutines*perGoroutine; i++ {
-				assert.True(t, set.Has(strconv.Itoa(i)), "Item %d should be present", i)
-			}
+			testConcurrentSetAccess(t, tt.newSet())
 		})
 	}
 }

@@ -168,94 +168,99 @@ func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
 	t.Run("Range", s.TestRange)
 }
 
-// TestMapImplementations is the main test function that sets up and runs the test suites.
-func TestMapImplementations(t *testing.T) {
-	t.Run("string-int", func(t *testing.T) {
-		t.Run("MutexMap", func(t *testing.T) {
-			suite := &mapTestSuite[string, int]{
-				newMap: func() Map[string, int] {
-					return NewMutexMap[string](func(a, b int) bool { return a == b })
-				},
-				key1: "one", key2: "two", key3: "three",
-				val1: 1, val2: 2, val3: 3,
-			}
-			runMapTestSuite(t, suite)
-		})
-
-		t.Run("RWMutexMap", func(t *testing.T) {
-			suite := &mapTestSuite[string, int]{
-				newMap: func() Map[string, int] {
-					return NewRWMutexMap[string](func(a, b int) bool { return a == b })
-				},
-				key1: "one", key2: "two", key3: "three",
-				val1: 1, val2: 2, val3: 3,
-			}
-			runMapTestSuite(t, suite)
-		})
-
-		t.Run("SyncMap", func(t *testing.T) {
-			suite := &mapTestSuite[string, int]{
-				newMap: func() Map[string, int] {
-					return NewSyncMap[string](func(a, b int) bool { return a == b })
-				},
-				key1: "one", key2: "two", key3: "three",
-				val1: 1, val2: 2, val3: 3,
-			}
-			runMapTestSuite(t, suite)
-		})
-
-		t.Run("SyncMap (nil equalFn for comparable V)", func(t *testing.T) {
-			suite := &mapTestSuite[string, int]{
-				newMap: func() Map[string, int] {
-					return NewSyncMap[string, int](nil)
-				},
-				key1: "one", key2: "two", key3: "three",
-				val1: 1, val2: 2, val3: 3,
-			}
-			runMapTestSuite(t, suite)
-		})
+// testStringIntMapImplementations tests all map implementations with string-int types.
+func testStringIntMapImplementations(t *testing.T) {
+	t.Run("MutexMap", func(t *testing.T) {
+		suite := &mapTestSuite[string, int]{
+			newMap: func() Map[string, int] {
+				return NewMutexMap[string](func(a, b int) bool { return a == b })
+			},
+			key1: "one", key2: "two", key3: "three",
+			val1: 1, val2: 2, val3: 3,
+		}
+		runMapTestSuite(t, suite)
 	})
 
+	t.Run("RWMutexMap", func(t *testing.T) {
+		suite := &mapTestSuite[string, int]{
+			newMap: func() Map[string, int] {
+				return NewRWMutexMap[string](func(a, b int) bool { return a == b })
+			},
+			key1: "one", key2: "two", key3: "three",
+			val1: 1, val2: 2, val3: 3,
+		}
+		runMapTestSuite(t, suite)
+	})
+
+	t.Run("SyncMap", func(t *testing.T) {
+		suite := &mapTestSuite[string, int]{
+			newMap: func() Map[string, int] {
+				return NewSyncMap[string](func(a, b int) bool { return a == b })
+			},
+			key1: "one", key2: "two", key3: "three",
+			val1: 1, val2: 2, val3: 3,
+		}
+		runMapTestSuite(t, suite)
+	})
+
+	t.Run("SyncMap (nil equalFn for comparable V)", func(t *testing.T) {
+		suite := &mapTestSuite[string, int]{
+			newMap: func() Map[string, int] {
+				return NewSyncMap[string, int](nil)
+			},
+			key1: "one", key2: "two", key3: "three",
+			val1: 1, val2: 2, val3: 3,
+		}
+		runMapTestSuite(t, suite)
+	})
+}
+
+// testIntStructMapImplementations tests all map implementations with int-struct types.
+func testIntStructMapImplementations(t *testing.T) {
 	type testStruct struct {
 		ID   int
 		Name string
 	}
-	t.Run("int-struct", func(t *testing.T) {
-		equalFunc := func(a, b testStruct) bool { return a.ID == b.ID && a.Name == b.Name }
+	equalFunc := func(a, b testStruct) bool { return a.ID == b.ID && a.Name == b.Name }
 
-		t.Run("MutexMap", func(t *testing.T) {
-			suite := &mapTestSuite[int, testStruct]{
-				newMap: func() Map[int, testStruct] {
-					return NewMutexMap[int](equalFunc)
-				},
-				key1: 1, key2: 2, key3: 3,
-				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
-			}
-			runMapTestSuite(t, suite)
-		})
-
-		t.Run("RWMutexMap", func(t *testing.T) {
-			suite := &mapTestSuite[int, testStruct]{
-				newMap: func() Map[int, testStruct] {
-					return NewRWMutexMap[int](equalFunc)
-				},
-				key1: 1, key2: 2, key3: 3,
-				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
-			}
-			runMapTestSuite(t, suite)
-		})
-
-		t.Run("SyncMap", func(t *testing.T) {
-			suite := &mapTestSuite[int, testStruct]{
-				newMap: func() Map[int, testStruct] {
-					return NewSyncMap[int, testStruct](equalFunc)
-				},
-				key1: 1, key2: 2, key3: 3,
-				val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
-			}
-			runMapTestSuite(t, suite)
-		})
+	t.Run("MutexMap", func(t *testing.T) {
+		suite := &mapTestSuite[int, testStruct]{
+			newMap: func() Map[int, testStruct] {
+				return NewMutexMap[int](equalFunc)
+			},
+			key1: 1, key2: 2, key3: 3,
+			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+		}
+		runMapTestSuite(t, suite)
 	})
+
+	t.Run("RWMutexMap", func(t *testing.T) {
+		suite := &mapTestSuite[int, testStruct]{
+			newMap: func() Map[int, testStruct] {
+				return NewRWMutexMap[int](equalFunc)
+			},
+			key1: 1, key2: 2, key3: 3,
+			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+		}
+		runMapTestSuite(t, suite)
+	})
+
+	t.Run("SyncMap", func(t *testing.T) {
+		suite := &mapTestSuite[int, testStruct]{
+			newMap: func() Map[int, testStruct] {
+				return NewSyncMap[int, testStruct](equalFunc)
+			},
+			key1: 1, key2: 2, key3: 3,
+			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+		}
+		runMapTestSuite(t, suite)
+	})
+}
+
+// TestMapImplementations is the main test function that sets up and runs the test suites.
+func TestMapImplementations(t *testing.T) {
+	t.Run("string-int", testStringIntMapImplementations)
+	t.Run("int-struct", testIntStructMapImplementations)
 }
 
 func TestCalculateMapDiff(t *testing.T) {
@@ -296,6 +301,46 @@ func TestCalculateMapDiff(t *testing.T) {
 	assert.Equal(t, 1, len(diff.Removed))
 }
 
+// testConcurrentMapAccess tests a map implementation for concurrent access safety.
+func testConcurrentMapAccess(t *testing.T, store Map[string, int]) {
+	const numGoroutines = 10
+	const perGoroutine = 100
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Concurrent writes
+	for i := range numGoroutines {
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := range perGoroutine {
+				key := strconv.Itoa(goroutineID*perGoroutine + j)
+				store.Set(key, goroutineID)
+			}
+		}(i)
+	}
+
+	// Concurrent reads
+	for range numGoroutines {
+		go func() {
+			for j := range perGoroutine {
+				store.Get(strconv.Itoa(j))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify all entries were written
+	assert.Equal(t, numGoroutines*perGoroutine, store.Len())
+
+	// Verify no data races by checking all values are within expected range
+	store.Range(func(_ string, value int) bool {
+		assert.True(t, value >= 0 && value < numGoroutines)
+		return true
+	})
+}
+
 // A separate concurrent test is useful to control the number of goroutines precisely.
 func TestConcurrentAccess(t *testing.T) {
 	implementations := []struct {
@@ -314,7 +359,6 @@ func TestConcurrentAccess(t *testing.T) {
 				return NewRWMutexMap[string](func(a, b int) bool { return a == b })
 			},
 		},
-
 		{
 			name: "SyncMap",
 			newMap: func() Map[string, int] {
@@ -325,43 +369,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	for _, tt := range implementations {
 		t.Run(tt.name, func(t *testing.T) {
-			store := tt.newMap()
-			const numGoroutines = 10
-			const perGoroutine = 100
-
-			var wg sync.WaitGroup
-			wg.Add(numGoroutines)
-
-			// Concurrent writes
-			for i := range numGoroutines {
-				go func(goroutineID int) {
-					defer wg.Done()
-					for j := range perGoroutine {
-						key := strconv.Itoa(goroutineID*perGoroutine + j)
-						store.Set(key, goroutineID)
-					}
-				}(i)
-			}
-
-			// Concurrent reads
-			for range numGoroutines {
-				go func() {
-					for j := range perGoroutine {
-						store.Get(strconv.Itoa(j))
-					}
-				}()
-			}
-
-			wg.Wait()
-
-			// Verify all entries were written
-			assert.Equal(t, numGoroutines*perGoroutine, store.Len())
-
-			// Verify no data races by checking all values are within expected range
-			store.Range(func(_ string, value int) bool {
-				assert.True(t, value >= 0 && value < numGoroutines)
-				return true
-			})
+			testConcurrentMapAccess(t, tt.newMap())
 		})
 	}
 }

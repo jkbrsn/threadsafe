@@ -39,7 +39,7 @@ func (s *SyncMapSet[T]) Has(item T) bool {
 // Len returns the number of items in the set.
 func (s *SyncMapSet[T]) Len() int {
 	count := 0
-	s.items.Range(func(key, value any) bool {
+	s.items.Range(func(_, _ any) bool {
 		count++
 		return true
 	})

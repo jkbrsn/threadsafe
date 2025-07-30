@@ -69,7 +69,6 @@ func (s *SyncMap[K, V]) CompareAndSwap(key K, oldValue, newValue V) bool {
 
 	// Fall back on sync.Map.CompareAndSwap, which will panic if V is not comparable
 	return s.values.CompareAndSwap(key, oldValue, newValue)
-
 }
 
 // Swap swaps the value for a key and returns the previous value if any.

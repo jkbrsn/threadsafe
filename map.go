@@ -76,7 +76,6 @@ func CalculateMapDiff[K comparable, V any](
 func equals[K comparable, V any](
 	a, b Map[K, V],
 	equalFn func(V, V) bool) bool {
-
 	// Fast paths: check object pointers and lengths
 	if &a == &b {
 		return true

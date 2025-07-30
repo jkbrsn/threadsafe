@@ -41,6 +41,8 @@ linters:
           disabled: false
           exclude: [""]
           arguments: [15]
+        - name: confusing-naming
+          disabled: true
     misspell:
       locale: US
 
