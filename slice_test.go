@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMutexSliceImplementsSlice(_ *testing.T) {
-	var _ Slice[int] = &MutexSlice[int]{}
+func TestRWMutexSliceImplementsSlice(_ *testing.T) {
+	var _ Slice[int] = &RWMutexSlice[int]{}
 }
 
-func TestMutexSlice_Basic(t *testing.T) {
-	store := NewMutexSlice[int](0)
+func TestRWMutexSlice_Basic(t *testing.T) {
+	store := NewRWMutexSlice[int](0)
 	assert.Equal(t, 0, store.Len())
 
 	store.Append(1)
@@ -34,8 +34,8 @@ func TestMutexSlice_Basic(t *testing.T) {
 	assert.Equal(t, 1, store.Len())
 }
 
-func TestMutexSlice_PeekDoesNotMutate(t *testing.T) {
-	store := NewMutexSlice[string](0)
+func TestRWMutexSlice_PeekDoesNotMutate(t *testing.T) {
+	store := NewRWMutexSlice[string](0)
 	store.Append("foo", "bar")
 	peeked := store.Peek()
 	store.Append("baz")
@@ -45,8 +45,8 @@ func TestMutexSlice_PeekDoesNotMutate(t *testing.T) {
 	assert.Equal(t, 3, len(peeked2))
 }
 
-func TestMutexSlice_ConcurrentAppend(t *testing.T) {
-	store := NewMutexSlice[int](0)
+func TestRWMutexSlice_ConcurrentAppend(t *testing.T) {
+	store := NewRWMutexSlice[int](0)
 	const numGoroutines = 10
 	const perGoroutine = 1000
 
@@ -73,8 +73,8 @@ func TestMutexSlice_ConcurrentAppend(t *testing.T) {
 	assert.Equal(t, numGoroutines*perGoroutine, len(m))
 }
 
-func TestMutexSlice_FlushIsAtomic(t *testing.T) {
-	store := NewMutexSlice[int](0)
+func TestRWMutexSlice_FlushIsAtomic(t *testing.T) {
+	store := NewRWMutexSlice[int](0)
 	for i := range 10 {
 		store.Append(i)
 	}
