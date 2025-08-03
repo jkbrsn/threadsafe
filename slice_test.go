@@ -11,6 +11,10 @@ func TestRWMutexSliceImplementsSlice(_ *testing.T) {
 	var _ Slice[int] = &RWMutexSlice[int]{}
 }
 
+func TestShardedSliceImplementsSlice(_ *testing.T) {
+	var _ Slice[int] = NewShardedSlice[int](4, 0)
+}
+
 func TestRWMutexSlice_Basic(t *testing.T) {
 	store := NewRWMutexSlice[int](0)
 	assert.Equal(t, 0, store.Len())
@@ -75,6 +79,65 @@ func TestRWMutexSlice_ConcurrentAppend(t *testing.T) {
 
 func TestRWMutexSlice_FlushIsAtomic(t *testing.T) {
 	store := NewRWMutexSlice[int](0)
+	for i := range 10 {
+		store.Append(i)
+	}
+	flushed := store.Flush()
+	assert.Equal(t, 0, store.Len())
+	assert.Equal(t, 10, len(flushed))
+}
+
+func TestShardedSlice_Basic(t *testing.T) {
+	store := NewShardedSlice[int](4, 0)
+	assert.Equal(t, 0, store.Len())
+
+	store.Append(1)
+	store.Append(2, 3)
+	assert.Equal(t, 3, store.Len())
+
+	peeked := store.Peek()
+	assert.ElementsMatch(t, []int{1, 2, 3}, peeked)
+
+	flushed := store.Flush()
+	assert.ElementsMatch(t, []int{1, 2, 3}, flushed)
+	assert.Equal(t, 0, store.Len())
+
+	// Append after flush
+	store.Append(42)
+	assert.Equal(t, 1, store.Len())
+}
+
+func TestShardedSlice_ConcurrentAppend(t *testing.T) {
+	const shards = 8
+	store := NewShardedSlice[int](shards, 0)
+	const numGoroutines = 16
+	const perGoroutine = 1000
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+	for i := range numGoroutines {
+		go func(base int) {
+			defer wg.Done()
+			for j := 0; j < perGoroutine; j++ {
+				store.Append(base*perGoroutine + j)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	assert.Equal(t, numGoroutines*perGoroutine, store.Len())
+
+	// Ensure all values are present and unique
+	m := make(map[int]bool)
+	for _, v := range store.Flush() {
+		assert.False(t, m[v])
+		m[v] = true
+	}
+	assert.Equal(t, numGoroutines*perGoroutine, len(m))
+}
+
+func TestShardedSlice_FlushIsAtomic(t *testing.T) {
+	store := NewShardedSlice[int](4, 0)
 	for i := range 10 {
 		store.Append(i)
 	}

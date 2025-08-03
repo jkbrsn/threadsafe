@@ -3,10 +3,10 @@ package threadsafe
 
 import "sync"
 
-// RWMutexSlice is a thread-safe buffer for any type T.
-// It allows concurrent appends and atomic flushes.
+// RWMutexSlice is a thread-safe buffer for any type T, backed by a slice and protected by a
+// sync.RWMutex. It allows concurrent appends and atomic flushes.
 type RWMutexSlice[T any] struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	data []T
 }
 
@@ -20,8 +20,9 @@ func NewRWMutexSlice[T any](initialCap int) *RWMutexSlice[T] {
 // Append appends items to the buffer in a thread-safe way.
 func (b *RWMutexSlice[T]) Append(item ...T) {
 	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	b.data = append(b.data, item...)
-	b.mu.Unlock()
 }
 
 // Flush atomically retrieves all items and clears the buffer.
@@ -29,6 +30,7 @@ func (b *RWMutexSlice[T]) Append(item ...T) {
 func (b *RWMutexSlice[T]) Flush() []T {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	flushed := b.data
 	b.data = make([]T, 0, cap(flushed))
 	return flushed
@@ -37,8 +39,9 @@ func (b *RWMutexSlice[T]) Flush() []T {
 // Peek returns a copy of the current buffer contents without clearing.
 // The returned slice is safe to read but may be stale if new items are added concurrently.
 func (b *RWMutexSlice[T]) Peek() []T {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	copied := make([]T, len(b.data))
 	copy(copied, b.data)
 	return copied
@@ -46,7 +49,8 @@ func (b *RWMutexSlice[T]) Peek() []T {
 
 // Len returns the current number of items in the buffer.
 func (b *RWMutexSlice[T]) Len() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	return len(b.data)
 }
