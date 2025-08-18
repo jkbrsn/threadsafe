@@ -3,13 +3,13 @@ package threadsafe
 
 import "sync"
 
-// RWMutexPriorityQueue is a thread-safe binary min-heap implementation parameterized by a Less comparator.
-// It maintains O(log n) push/pop/fix/removeAt and O(1) peek. It optionally notifies a caller-supplied
-// onSwap callback whenever two indices swap, which can be used to maintain external index fields.
+// RWMutexPriorityQueue is a thread-safe binary min-heap implementation parameterized by a
+// Less comparator. It maintains O(log n) push/pop/fix/removeAt and O(1) peek. It optionally
+// notifies a caller-supplied onSwap callback whenever two indices swap, which can be used to
+// maintain external index fields.
 //
 // The zero value is not ready to use; construct via NewRWMutexPriorityQueue.
 // This mirrors the style of NewRWMutexQueue in this repository.
-
 type RWMutexPriorityQueue[T any] struct {
 	mu     sync.RWMutex
 	items  []T
@@ -19,8 +19,11 @@ type RWMutexPriorityQueue[T any] struct {
 
 // NewRWMutexPriorityQueue creates a new heap with the provided comparator.
 // less(a,b) should return true when a has higher priority than b (i.e., a comes before b).
-// onSwap is optional; if non-nil it is called under the write lock whenever two items swap indices.
-func NewRWMutexPriorityQueue[T any](less func(a, b T) bool, onSwap func(i, j int, items []T)) *RWMutexPriorityQueue[T] {
+// onSwap is optional; if non-nil it's called under the write lock whenever two items swap indices.
+func NewRWMutexPriorityQueue[T any](
+	less func(a, b T) bool,
+	onSwap func(i, j int, items []T),
+) *RWMutexPriorityQueue[T] {
 	return &RWMutexPriorityQueue[T]{cmp: less, onSwap: onSwap}
 }
 

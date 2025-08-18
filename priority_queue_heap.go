@@ -17,7 +17,7 @@ import (
 // If you store indices outside, use onSwap to update them.
 //
 // Complexity: Push/Pop/Fix/RemoveAt/UpdateAt are O(log n); Peek O(1).
-// Range/Slice do not mutate the heap.
+// Range does not mutate the heap.
 type HeapPriorityQueue[T any] struct {
 	mu     sync.RWMutex
 	items  []T
@@ -28,7 +28,10 @@ type HeapPriorityQueue[T any] struct {
 // NewHeapPriorityQueue creates a new heap-backed priority queue.
 // less(a,b) should return true if a has higher priority (i.e., should come before b).
 // onSwap is optional; if non-nil it is called whenever two elements swap.
-func NewHeapPriorityQueue[T any](less func(a, b T) bool, onSwap func(i, j int, items []T)) *HeapPriorityQueue[T] {
+func NewHeapPriorityQueue[T any](
+	less func(a, b T) bool,
+	onSwap func(i, j int, items []T),
+) *HeapPriorityQueue[T] {
 	return &HeapPriorityQueue[T]{less: less, onSwap: onSwap}
 }
 
