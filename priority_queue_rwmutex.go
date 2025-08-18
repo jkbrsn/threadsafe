@@ -79,18 +79,6 @@ func (h *RWMutexPriorityQueue[T]) Clear() {
 	h.mu.Unlock()
 }
 
-// Slice returns a copy of the internal array (arbitrary order).
-func (h *RWMutexPriorityQueue[T]) Slice() []T {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if len(h.items) == 0 {
-		return nil
-	}
-	cp := make([]T, len(h.items))
-	copy(cp, h.items)
-	return cp
-}
-
 // Range iterates over the current snapshot in arbitrary order.
 func (h *RWMutexPriorityQueue[T]) Range(f func(item T) bool) {
 	h.mu.RLock()

@@ -43,13 +43,14 @@ type PriorityQueue[T any] interface {
 	// Clear removes all items from the queue.
 	Clear()
 
-	// Slice returns a copy of the queue's items in arbitrary internal order
-	// (NOT sorted). This is intended for debugging or snapshotting.
-	// If a sorted slice is needed, callers should copy and sort externally.
-	Slice() []T
-
 	// Range iterates over items in arbitrary internal order. Returning false stops early.
 	Range(f func(item T) bool)
+}
+
+// PriorityQueueIndexed exposes index-based mutation helpers intended for advanced use-cases.
+// Implementations may choose not to support this interface.
+type PriorityQueueIndexed[T any] interface {
+	PriorityQueue[T]
 
 	// Fix re-establishes queue ordering after the item at index i may have changed.
 	// Safe no-op if i is out of range.

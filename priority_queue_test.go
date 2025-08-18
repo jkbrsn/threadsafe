@@ -71,7 +71,9 @@ func (s *priorityQueueTestSuite[T]) TestConcurrentOperations(t *testing.T) {
 		}(time.Now().UnixNano() + int64(g))
 	}
 	wg.Wait()
-	all := pq.Slice()
+	// Snapshot via Range instead of Slice
+	var all []int
+	pq.Range(func(x int) bool { all = append(all, x); return true })
 	sort.Ints(all)
 	for _, want := range all {
 		got, ok := pq.Pop()
@@ -90,7 +92,8 @@ func (s *priorityQueueTestSuite[T]) TestBasicOperations(t *testing.T) {
 	assert.Equal(t, len(itms), pq.Len())
 
 	// Peek min then Pop in ascending order by comparator by comparing to sorted snapshot.
-	snap := pq.Slice()
+	var snap []T
+	pq.Range(func(x T) bool { snap = append(snap, x); return true })
 	// Make a sorted copy according to less
 	sorted := make([]T, len(snap))
 	copy(sorted, snap)
@@ -122,17 +125,18 @@ func (s *priorityQueueTestSuite[T]) TestFixUpdateRemove(t *testing.T) {
 	pq.Push(itms...)
 
 	// RemoveAt root if exists
-	if pq.Len() > 0 {
-		_, ok := pq.RemoveAt(0)
-		assert.True(t, ok)
-	}
-
-	// UpdateAt some index if exists and Fix
-	if pq.Len() >= 1 {
-		idx := 0
-		x, _ := pq.Peek() // get a current min and reinsert as min again
-		_ = pq.UpdateAt(idx, x)
-		pq.Fix(idx)
+	// If implementation supports indexed ops, exercise them
+	if idxPQ, ok := any(pq).(PriorityQueueIndexed[T]); ok {
+		if idxPQ.Len() > 0 {
+			_, ok := idxPQ.RemoveAt(0)
+			assert.True(t, ok)
+		}
+		if idxPQ.Len() >= 1 {
+			idx := 0
+			x, _ := idxPQ.Peek()
+			_ = idxPQ.UpdateAt(idx, x)
+			idxPQ.Fix(idx)
+		}
 	}
 }
 

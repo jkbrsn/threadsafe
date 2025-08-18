@@ -82,18 +82,6 @@ func (h *HeapPriorityQueue[T]) Clear() {
 	h.mu.Unlock()
 }
 
-// Slice returns a copy of items in arbitrary internal order.
-func (h *HeapPriorityQueue[T]) Slice() []T {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if len(h.items) == 0 {
-		return nil
-	}
-	cp := make([]T, len(h.items))
-	copy(cp, h.items)
-	return cp
-}
-
 // Range iterates a snapshot in arbitrary order.
 func (h *HeapPriorityQueue[T]) Range(f func(item T) bool) {
 	h.mu.RLock()
