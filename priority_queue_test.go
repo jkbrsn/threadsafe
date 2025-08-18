@@ -45,8 +45,8 @@ type priorityQueueTestSuite[T any] struct {
 	items func() []T
 }
 
-// TestConcurrentPushSequentialPop pushes N random ints concurrently and then pops in order
-func (s *priorityQueueTestSuite[T]) TestConcurrentPushSequentialPop(t *testing.T) {
+// TestConcurrentOperations pushes N random ints concurrently and then pops in order.
+func (s *priorityQueueTestSuite[T]) TestConcurrentOperations(t *testing.T) {
 	// This test is specialized to int T; guard via type assertion
 	newIntPQ, ok := any(s.newPQ).(func() PriorityQueue[int])
 	if !ok {
@@ -138,12 +138,9 @@ func (s *priorityQueueTestSuite[T]) TestFixUpdateRemove(t *testing.T) {
 
 // runPriorityQueueTestSuite runs common tests for a PriorityQueue implementation.
 func runPriorityQueueTestSuite[T any](t *testing.T, s *priorityQueueTestSuite[T]) {
-	// Keep subtest names aligned with Set suite style
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("FixUpdateRemove", s.TestFixUpdateRemove)
-	t.Run("ConcurrentPushSequentialPop", s.TestConcurrentPushSequentialPop)
-	// Concurrency: concurrent pushes then sequential pops verify ordering
-	t.Run("ConcurrentPushSequentialPop", s.TestConcurrentPushSequentialPop)
+	t.Run("ConcurrentOperations", s.TestConcurrentOperations)
 }
 
 // TestPriorityQueueImplementations runs the test suite for both implementations.
@@ -174,5 +171,84 @@ func TestPriorityQueueImplementations(t *testing.T) {
 			items: items,
 		}
 		runPriorityQueueTestSuite(t, s)
+	})
+}
+
+//
+// BENCHMARKS
+//
+
+// benchmarkPriorityQueue exercises common PQ operations.
+func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
+	// Push benchmark
+	b.Run("Push", func(b *testing.B) {
+		pq := newPQ()
+		b.ResetTimer()
+		for b.Loop() {
+			pq.Push(1)
+		}
+	})
+
+	// Peek benchmark
+	b.Run("Peek", func(b *testing.B) {
+		pq := newPQ()
+		pq.Push(1)
+		b.ResetTimer()
+		for b.Loop() {
+			pq.Peek()
+		}
+	})
+
+	// Pop benchmark
+	b.Run("Pop", func(b *testing.B) {
+		pq := newPQ()
+		for i := 0; i < b.N; i++ { // preload with N items so we can pop in loop
+			pq.Push(i)
+		}
+		b.ResetTimer()
+		for b.Loop() {
+			if _, ok := pq.Pop(); !ok {
+				// Refill minimally to keep popping
+				pq.Push(1)
+			}
+		}
+	})
+
+	// Mixed concurrent workload (approx 80% Peek, 15% Push, 5% Pop)
+	b.Run("ConcurrentMixed", func(b *testing.B) {
+		pq := newPQ()
+		// Pre-fill with some elements
+		for i := 0; i < 1000; i++ {
+			pq.Push(i)
+		}
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			i := 0
+			for pb.Next() {
+				i++
+				s := i % 20
+				if s == 0 { // 5%
+					pq.Pop()
+				} else if s%4 == 0 { // 15%
+					pq.Push(i)
+				} else { // 80%
+					pq.Peek()
+				}
+			}
+		})
+	})
+}
+
+func BenchmarkPriorityQueueImplementations(b *testing.B) {
+	b.Run("RWMutexPriorityQueue", func(b *testing.B) {
+		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
+			return NewRWMutexPriorityQueue(func(a, b int) bool { return a < b }, nil)
+		})
+	})
+
+	b.Run("HeapPriorityQueue", func(b *testing.B) {
+		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
+			return NewHeapPriorityQueue(func(a, b int) bool { return a < b }, nil)
+		})
 	})
 }
