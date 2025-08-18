@@ -64,7 +64,7 @@ func (s *priorityQueueTestSuite[T]) TestConcurrentPushSequentialPop(t *testing.T
 			defer wg.Done()
 			r := rand.New(rand.NewSource(seed))
 			vals := make([]int, per)
-			for i := 0; i < per; i++ {
+			for i := range per {
 				vals[i] = r.Intn(1000000)
 			}
 			pq.Push(vals...)
@@ -155,7 +155,7 @@ func TestPriorityQueueImplementations(t *testing.T) {
 	t.Run("RWMutexPriorityQueue", func(t *testing.T) {
 		s := &priorityQueueTestSuite[heapTestItem]{
 			newPQ: func() PriorityQueue[heapTestItem] {
-				return NewRWMutexPriorityQueue[heapTestItem](lessItem, onSwapItem)
+				return NewRWMutexPriorityQueue(lessItem, onSwapItem)
 			},
 			less:  lessItem,
 			prio:  func(x heapTestItem) int { return x.Prio },
@@ -167,7 +167,7 @@ func TestPriorityQueueImplementations(t *testing.T) {
 	t.Run("HeapPriorityQueue", func(t *testing.T) {
 		s := &priorityQueueTestSuite[heapTestItem]{
 			newPQ: func() PriorityQueue[heapTestItem] {
-				return NewHeapPriorityQueue[heapTestItem](lessItem, nil)
+				return NewHeapPriorityQueue(lessItem, nil)
 			},
 			less:  lessItem,
 			prio:  func(x heapTestItem) int { return x.Prio },
@@ -175,35 +175,4 @@ func TestPriorityQueueImplementations(t *testing.T) {
 		}
 		runPriorityQueueTestSuite(t, s)
 	})
-}
-
-// Legacy standalone concurrency test kept via suite integration above.
-func TestPriorityQueueConcurrentPushSequentialPop(t *testing.T) {
-	h := NewRWMutexPriorityQueue[int](func(a, b int) bool { return a < b }, nil)
-	const goroutines = 8
-	const per = 200
-	var wg sync.WaitGroup
-	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
-		go func(seed int64) {
-			defer wg.Done()
-			r := rand.New(rand.NewSource(seed))
-			vals := make([]int, per)
-			for i := 0; i < per; i++ {
-				vals[i] = r.Intn(1000000)
-			}
-			h.Push(vals...)
-		}(time.Now().UnixNano() + int64(g))
-	}
-	wg.Wait()
-
-	// verify ascending order by popping all and comparing to sorted snapshot
-	all := h.Slice()
-	sort.Ints(all)
-	for _, want := range all {
-		got, ok := h.Pop()
-		assert.True(t, ok)
-		assert.Equal(t, want, got)
-	}
-	assert.Equal(t, 0, h.Len())
 }
