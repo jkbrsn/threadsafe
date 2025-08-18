@@ -202,7 +202,7 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	// Pop benchmark
 	b.Run("Pop", func(b *testing.B) {
 		pq := newPQ()
-		for i := 0; i < b.N; i++ { // preload with N items so we can pop in loop
+		for i := 0; b.Loop(); i++ { // preload with N items so we can pop in loop
 			pq.Push(i)
 		}
 		b.ResetTimer()
@@ -218,7 +218,7 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	b.Run("ConcurrentMixed", func(b *testing.B) {
 		pq := newPQ()
 		// Pre-fill with some elements
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			pq.Push(i)
 		}
 		b.ResetTimer()

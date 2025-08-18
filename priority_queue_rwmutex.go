@@ -199,6 +199,3 @@ func (h *RWMutexPriorityQueue[T]) down(i int) bool {
 	}
 	return moved
 }
-
-// Ensure RWMutexPriorityQueue implements PriorityQueue.
-var _ PriorityQueue[any] = (*RWMutexPriorityQueue[any])(nil)

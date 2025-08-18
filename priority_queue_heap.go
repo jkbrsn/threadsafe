@@ -193,6 +193,3 @@ func (a *heapAdapter[T]) removeNoCheck(i int) T {
 	heap.Fix(a, i)
 	return v
 }
-
-// Ensure HeapPriorityQueue implements PriorityQueue.
-var _ PriorityQueue[any] = (*HeapPriorityQueue[any])(nil)
