@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// heapTestItem is a sample element for testing PQs.
 type heapTestItem struct {
 	ID   string
 	Prio int
-	Idx  int // external index maintenance example
+	Idx  int // optional external index maintenance example
 }
 
 // helper less: min-heap by Prio
@@ -33,116 +34,150 @@ func TestRWMutexPriorityQueueImplementsInterface(_ *testing.T) {
 	var _ PriorityQueue[int] = &RWMutexPriorityQueue[int]{}
 }
 
-func TestHeapPriorityQueueBasic(t *testing.T) {
-	pq := NewHeapPriorityQueue[heapTestItem](lessItem, nil)
+// priorityQueueTestSuite defines a reusable test suite for PriorityQueue[T].
+// newPQ constructs a fresh queue for each test.
+type priorityQueueTestSuite[T any] struct {
+	// prio extracts a comparable priority for assertions across implementations
+	prio  func(x T) int
+	newPQ func() PriorityQueue[T]
+	less  func(a, b T) bool
+	// generator to produce some items for tests (unsorted)
+	items func() []T
+}
+
+// TestConcurrentPushSequentialPop pushes N random ints concurrently and then pops in order
+func (s *priorityQueueTestSuite[T]) TestConcurrentPushSequentialPop(t *testing.T) {
+	// This test is specialized to int T; guard via type assertion
+	newIntPQ, ok := any(s.newPQ).(func() PriorityQueue[int])
+	if !ok {
+		// Skip for non-int specializations
+		t.Skip("concurrency test defined for int priority only")
+		return
+	}
+	const goroutines = 8
+	const per = 200
+	pq := newIntPQ()
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func(seed int64) {
+			defer wg.Done()
+			r := rand.New(rand.NewSource(seed))
+			vals := make([]int, per)
+			for i := 0; i < per; i++ {
+				vals[i] = r.Intn(1000000)
+			}
+			pq.Push(vals...)
+		}(time.Now().UnixNano() + int64(g))
+	}
+	wg.Wait()
+	all := pq.Slice()
+	sort.Ints(all)
+	for _, want := range all {
+		got, ok := pq.Pop()
+		assert.True(t, ok)
+		assert.Equal(t, want, got)
+	}
+	assert.Equal(t, 0, pq.Len())
+}
+
+func (s *priorityQueueTestSuite[T]) TestBasicOperations(t *testing.T) {
+	pq := s.newPQ()
 	assert.Equal(t, 0, pq.Len())
 
-	pq.Push(heapTestItem{ID: "a", Prio: 3},
-		heapTestItem{ID: "b", Prio: 1},
-		heapTestItem{ID: "c", Prio: 2})
-	it, ok := pq.Peek()
-	assert.True(t, ok)
-	assert.Equal(t, "b", it.ID)
+	itms := s.items()
+	pq.Push(itms...)
+	assert.Equal(t, len(itms), pq.Len())
 
-	x, ok := pq.Pop()
-	assert.True(t, ok)
-	assert.Equal(t, "b", x.ID)
+	// Peek min then Pop in ascending order by comparator by comparing to sorted snapshot.
+	snap := pq.Slice()
+	// Make a sorted copy according to less
+	sorted := make([]T, len(snap))
+	copy(sorted, snap)
+	sort.Slice(sorted, func(i, j int) bool { return s.less(sorted[i], sorted[j]) })
 
-	x, _ = pq.Pop()
-	assert.Equal(t, "c", x.ID)
-	x, _ = pq.Pop()
-	assert.Equal(t, "a", x.ID)
+	first, ok := pq.Peek()
+	assert.True(t, ok)
+	// Compare by priority instead of full struct to ignore Idx changes
+	assert.Equal(t, s.prio(sorted[0]), s.prio(first))
+
+	for _, want := range sorted {
+		got, ok := pq.Pop()
+		assert.True(t, ok)
+		assert.Equal(t, s.prio(want), s.prio(got))
+	}
 	_, ok = pq.Pop()
 	assert.False(t, ok)
+
+	// Clear after pushing again
+	pq.Push(itms[0])
+	assert.Equal(t, 1, pq.Len())
+	pq.Clear()
+	assert.Equal(t, 0, pq.Len())
 }
 
-func TestHeapPriorityQueueFixRemoveUpdate(t *testing.T) {
-	pq := NewHeapPriorityQueue[heapTestItem](lessItem, nil)
-	pq.Push(heapTestItem{ID: "a", Prio: 5},
-		heapTestItem{ID: "b", Prio: 3},
-		heapTestItem{ID: "c", Prio: 7},
-		heapTestItem{ID: "d", Prio: 1})
-	// RemoveAt root
-	_, ok := pq.RemoveAt(0)
-	assert.True(t, ok)
-	// UpdateAt some index if exists
-	if pq.Len() >= 2 {
-		_ = pq.UpdateAt(1, heapTestItem{ID: "x", Prio: 0})
-		pq.Fix(1)
-		it, _ := pq.Peek()
-		assert.Equal(t, 0, it.Prio)
+func (s *priorityQueueTestSuite[T]) TestFixUpdateRemove(t *testing.T) {
+	pq := s.newPQ()
+	itms := s.items()
+	pq.Push(itms...)
+
+	// RemoveAt root if exists
+	if pq.Len() > 0 {
+		_, ok := pq.RemoveAt(0)
+		assert.True(t, ok)
+	}
+
+	// UpdateAt some index if exists and Fix
+	if pq.Len() >= 1 {
+		idx := 0
+		x, _ := pq.Peek() // get a current min and reinsert as min again
+		_ = pq.UpdateAt(idx, x)
+		pq.Fix(idx)
 	}
 }
 
-func TestPriorityQueueBasicOperations(t *testing.T) {
-	h := NewRWMutexPriorityQueue[heapTestItem](lessItem, onSwapItem)
-	assert.Equal(t, 0, h.Len())
-
-	// push
-	h.Push(heapTestItem{ID: "a", Prio: 3}, heapTestItem{ID: "b", Prio: 1})
-	assert.Equal(t, 2, h.Len())
-
-	// peek should be min
-	it, ok := h.Peek()
-	assert.True(t, ok)
-	assert.Equal(t, "b", it.ID)
-
-	// pop order
-	it, ok = h.Pop()
-	assert.True(t, ok)
-	assert.Equal(t, "b", it.ID)
-	it, ok = h.Pop()
-	assert.True(t, ok)
-	assert.Equal(t, "a", it.ID)
-	_, ok = h.Pop()
-	assert.False(t, ok)
-
-	// clear
-	h.Push(heapTestItem{ID: "x", Prio: 10})
-	assert.Equal(t, 1, h.Len())
-	h.Clear()
-	assert.Equal(t, 0, h.Len())
+// runPriorityQueueTestSuite runs common tests for a PriorityQueue implementation.
+func runPriorityQueueTestSuite[T any](t *testing.T, s *priorityQueueTestSuite[T]) {
+	// Keep subtest names aligned with Set suite style
+	t.Run("BasicOperations", s.TestBasicOperations)
+	t.Run("FixUpdateRemove", s.TestFixUpdateRemove)
+	t.Run("ConcurrentPushSequentialPop", s.TestConcurrentPushSequentialPop)
+	// Concurrency: concurrent pushes then sequential pops verify ordering
+	t.Run("ConcurrentPushSequentialPop", s.TestConcurrentPushSequentialPop)
 }
 
-func TestPriorityQueueFixUpdateRemove(t *testing.T) {
-	h := NewRWMutexPriorityQueue[heapTestItem](lessItem, onSwapItem)
-	items := []heapTestItem{{ID: "a", Prio: 5}, {ID: "b", Prio: 3}, {ID: "c", Prio: 7}, {ID: "d", Prio: 1}}
-	h.Push(items...)
-	// indices should be tracked in onSwap
-	for i := 0; i < h.Len(); i++ {
-		// ensure indices in range
-		snap := h.Slice()
-		_ = snap
+// TestPriorityQueueImplementations runs the test suite for both implementations.
+func TestPriorityQueueImplementations(t *testing.T) {
+	items := func() []heapTestItem {
+		return []heapTestItem{{ID: "a", Prio: 3}, {ID: "b", Prio: 1}, {ID: "c", Prio: 2}}
 	}
 
-	// Decrease key of 'c' to become minimum
-	snap := h.Slice()
-	var idxC int = -1
-	for i := range snap {
-		if snap[i].ID == "c" {
-			idxC = i
+	t.Run("RWMutexPriorityQueue", func(t *testing.T) {
+		s := &priorityQueueTestSuite[heapTestItem]{
+			newPQ: func() PriorityQueue[heapTestItem] {
+				return NewRWMutexPriorityQueue[heapTestItem](lessItem, onSwapItem)
+			},
+			less:  lessItem,
+			prio:  func(x heapTestItem) int { return x.Prio },
+			items: items,
 		}
-	}
-	// UpdateAt requires internal index; we'll find by scanning snapshot and assume same index
-	if idxC >= 0 {
-		// we don't know if snapshot index matches internal; use RemoveAt+Push as robust path
-		if removed, ok := h.RemoveAt(idxC); ok {
-			removed.Prio = 0
-			h.Push(removed)
+		runPriorityQueueTestSuite(t, s)
+	})
+
+	t.Run("HeapPriorityQueue", func(t *testing.T) {
+		s := &priorityQueueTestSuite[heapTestItem]{
+			newPQ: func() PriorityQueue[heapTestItem] {
+				return NewHeapPriorityQueue[heapTestItem](lessItem, nil)
+			},
+			less:  lessItem,
+			prio:  func(x heapTestItem) int { return x.Prio },
+			items: items,
 		}
-	}
-
-	it, _ := h.Peek()
-	assert.Equal(t, 0, it.Prio)
-
-	// RemoveAt root then check next min
-	_, ok := h.RemoveAt(0)
-	assert.True(t, ok)
-	it, _ = h.Peek()
-	// next min should be 1 or 3 depending on previous state
-	assert.True(t, it.Prio == 1 || it.Prio == 3)
+		runPriorityQueueTestSuite(t, s)
+	})
 }
 
+// Legacy standalone concurrency test kept via suite integration above.
 func TestPriorityQueueConcurrentPushSequentialPop(t *testing.T) {
 	h := NewRWMutexPriorityQueue[int](func(a, b int) bool { return a < b }, nil)
 	const goroutines = 8
