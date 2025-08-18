@@ -3,13 +3,12 @@ package threadsafe
 
 import "sync"
 
-// RWMutexQueue is a thread-safe FIFO queue implementation backed by a slice
-// and protected by a sync.RWMutex.
+// RWMutexQueue is a thread-safe FIFO queue implementation backed by a slice and protected
+// by a sync.RWMutex.
 //
-// The implementation aims for amortized O(1) Enqueue and Dequeue by keeping a
-// head index instead of shifting the slice on every dequeue.
-// When the internal slice has too much unused prefix, it is resliced to reclaim
-// memory.
+// The implementation aims for amortized O(1) Push and Pop by keeping a head index instead
+// of shifting the slice on every Pop. When the internal slice has too much unused prefix,
+// it is resliced to reclaim memory.
 //
 // The zero value of RWMutexQueue is ready to use.
 const shrinkThreshold = 64 // when head exceeds this and half the slice is unused, shrink
@@ -25,8 +24,8 @@ func NewRWMutexQueue[T any]() *RWMutexQueue[T] {
 	return &RWMutexQueue[T]{}
 }
 
-// Enqueue adds one or more items to the back of the queue.
-func (q *RWMutexQueue[T]) Enqueue(items ...T) {
+// Push adds one or more items to the back of the queue.
+func (q *RWMutexQueue[T]) Push(items ...T) {
 	if len(items) == 0 {
 		return
 	}

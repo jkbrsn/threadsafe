@@ -7,8 +7,8 @@ package threadsafe
 // The contract is intentionally similar in style to Set and Map interfaces in this
 // repository to provide a consistent developer experience.
 type Queue[T any] interface {
-	// Enqueue adds one or more items to the back of the queue.
-	Enqueue(items ...T)
+	// Push adds one or more items to the back of the queue.
+	Push(items ...T)
 
 	// Pop removes and returns the item at the front of the queue.
 	// If the queue is empty, it returns ok == false and the zero value of T.

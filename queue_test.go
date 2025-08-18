@@ -21,13 +21,13 @@ func TestRWMutexQueueImplementsQueue(_ *testing.T) {
 	var _ Queue[string] = &RWMutexQueue[string]{}
 }
 
-// TestBasicOperations verifies Enqueue, Pop, Peek, Len, Clear.
+// TestBasicOperations verifies Push, Pop, Peek, Len, Clear.
 func (s *queueTestSuite[T]) TestBasicOperations(t *testing.T) {
 	q := s.newQueue()
 	assert.Equal(t, 0, q.Len())
 
-	// Enqueue items
-	q.Enqueue(s.item1, s.item2)
+	// Push items
+	q.Push(s.item1, s.item2)
 	assert.Equal(t, 2, q.Len())
 
 	// Peek should return first item without removal
@@ -62,8 +62,8 @@ func (s *queueTestSuite[T]) TestSlice(t *testing.T) {
 	// Empty slice
 	assert.Empty(t, q.Slice())
 
-	// Enqueue items
-	q.Enqueue(s.item1, s.item2)
+	// Push items
+	q.Push(s.item1, s.item2)
 	sl := q.Slice()
 	assert.Equal(t, 2, len(sl))
 	// verify order FIFO
@@ -74,7 +74,7 @@ func (s *queueTestSuite[T]) TestSlice(t *testing.T) {
 func (s *queueTestSuite[T]) TestRange(t *testing.T) {
 	q := s.newQueue()
 	// Add items
-	q.Enqueue(s.item1, s.item2, s.item3)
+	q.Push(s.item1, s.item2, s.item3)
 
 	visited := []T{}
 	q.Range(func(it T) bool {
@@ -155,7 +155,7 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < perGoroutine; j++ {
-				q.Enqueue(strconv.Itoa(id*perGoroutine + j))
+				q.Push(strconv.Itoa(id*perGoroutine + j))
 			}
 		}(i)
 	}
