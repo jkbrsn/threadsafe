@@ -16,10 +16,6 @@ type heapTestItem struct {
 	Idx  int // external index maintenance example
 }
 
-func TestRWMutexPriorityQueueImplementsPriorityQueue(_ *testing.T) {
-	var _ PriorityQueue[int] = &RWMutexPriorityQueue[int]{}
-}
-
 // helper less: min-heap by Prio
 func lessItem(a, b heapTestItem) bool { return a.Prio < b.Prio }
 
@@ -27,6 +23,55 @@ func lessItem(a, b heapTestItem) bool { return a.Prio < b.Prio }
 func onSwapItem(i, j int, items []heapTestItem) {
 	items[i].Idx = i
 	items[j].Idx = j
+}
+
+func TestHeapPriorityQueueImplementsInterface(_ *testing.T) {
+	var _ PriorityQueue[int] = &HeapPriorityQueue[int]{}
+}
+
+func TestRWMutexPriorityQueueImplementsInterface(_ *testing.T) {
+	var _ PriorityQueue[int] = &RWMutexPriorityQueue[int]{}
+}
+
+func TestHeapPriorityQueueBasic(t *testing.T) {
+	pq := NewHeapPriorityQueue[heapTestItem](lessItem, nil)
+	assert.Equal(t, 0, pq.Len())
+
+	pq.Push(heapTestItem{ID: "a", Prio: 3},
+		heapTestItem{ID: "b", Prio: 1},
+		heapTestItem{ID: "c", Prio: 2})
+	it, ok := pq.Peek()
+	assert.True(t, ok)
+	assert.Equal(t, "b", it.ID)
+
+	x, ok := pq.Pop()
+	assert.True(t, ok)
+	assert.Equal(t, "b", x.ID)
+
+	x, _ = pq.Pop()
+	assert.Equal(t, "c", x.ID)
+	x, _ = pq.Pop()
+	assert.Equal(t, "a", x.ID)
+	_, ok = pq.Pop()
+	assert.False(t, ok)
+}
+
+func TestHeapPriorityQueueFixRemoveUpdate(t *testing.T) {
+	pq := NewHeapPriorityQueue[heapTestItem](lessItem, nil)
+	pq.Push(heapTestItem{ID: "a", Prio: 5},
+		heapTestItem{ID: "b", Prio: 3},
+		heapTestItem{ID: "c", Prio: 7},
+		heapTestItem{ID: "d", Prio: 1})
+	// RemoveAt root
+	_, ok := pq.RemoveAt(0)
+	assert.True(t, ok)
+	// UpdateAt some index if exists
+	if pq.Len() >= 2 {
+		_ = pq.UpdateAt(1, heapTestItem{ID: "x", Prio: 0})
+		pq.Fix(1)
+		it, _ := pq.Peek()
+		assert.Equal(t, 0, it.Prio)
+	}
 }
 
 func TestPriorityQueueBasicOperations(t *testing.T) {
