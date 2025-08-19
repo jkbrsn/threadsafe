@@ -97,6 +97,16 @@ func TestSliceImplementations(t *testing.T) {
 			}
 			runSliceTestSuite(t, suite)
 		})
+		t.Run("RWMutexSlice", func(t *testing.T) {
+			suite := &sliceTestSuite[string]{
+				newSlice: func() Slice[string] {
+					return NewRWMutexSlice[string](0)
+				},
+				item1: "apple", item2: "banana", item3: "cherry",
+				items: []string{"apple", "banana", "cherry", "orange", "lime"},
+			}
+			runSliceTestSuite(t, suite)
+		})
 	})
 
 	t.Run("int", func(t *testing.T) {
@@ -104,6 +114,16 @@ func TestSliceImplementations(t *testing.T) {
 			suite := &sliceTestSuite[int]{
 				newSlice: func() Slice[int] {
 					return NewMutexSlice[int](0)
+				},
+				item1: 1, item2: 2, item3: 3,
+				items: []int{1, 2, 3, 4, 5},
+			}
+			runSliceTestSuite(t, suite)
+		})
+		t.Run("RWMutexSlice", func(t *testing.T) {
+			suite := &sliceTestSuite[int]{
+				newSlice: func() Slice[int] {
+					return NewRWMutexSlice[int](0)
 				},
 				item1: 1, item2: 2, item3: 3,
 				items: []int{1, 2, 3, 4, 5},
@@ -121,6 +141,24 @@ func TestSliceImplementations(t *testing.T) {
 			suite := &sliceTestSuite[testStruct]{
 				newSlice: func() Slice[testStruct] {
 					return NewMutexSlice[testStruct](0)
+				},
+				item1: testStruct{1, "A"},
+				item2: testStruct{2, "B"},
+				item3: testStruct{3, "C"},
+				items: []testStruct{
+					{1, "A"},
+					{2, "B"},
+					{3, "C"},
+					{4, "D"},
+					{5, "E"},
+				},
+			}
+			runSliceTestSuite(t, suite)
+		})
+		t.Run("RWMutexSlice", func(t *testing.T) {
+			suite := &sliceTestSuite[testStruct]{
+				newSlice: func() Slice[testStruct] {
+					return NewRWMutexSlice[testStruct](0)
 				},
 				item1: testStruct{1, "A"},
 				item2: testStruct{2, "B"},
@@ -192,6 +230,12 @@ func BenchmarkSliceImplementations(b *testing.B) {
 	b.Run("MutexSlice", func(b *testing.B) {
 		benchmarkSlice(b, func() Slice[string] {
 			return NewMutexSlice[string](0)
+		})
+	})
+
+	b.Run("RWMutexSlice", func(b *testing.B) {
+		benchmarkSlice(b, func() Slice[string] {
+			return NewRWMutexSlice[string](0)
 		})
 	})
 }
