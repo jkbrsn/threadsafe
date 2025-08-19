@@ -4,14 +4,19 @@
 [license]: /LICENSE
 
 
-The threadsafe package provides thread-safe operations for various Go types.
+The threadsafe package provides thread-safe operations for various data structures common in concurrent Go applications.
 
-The interfaces provided by the package are generic, and attempt to be quite exhaustive feature wise. If you need a more minimal interface for your application, create it as needed.
+The interfaces provided by the package are generic, and attempt to be quite exhaustive feature wise. If a more minimal interface would be better aligned for your application, create it as needed.
 
-## Install
+All interface implementations in this package are thread-safe and can be used concurrently.
+
+## Tests and benchmarks
+
+The package provides a Makefile with targets for running tests and benchmarks:
 
 ```bash
-go get github.com/jkbrsn/threadsafe
+make test
+make bench
 ```
 
 ## Contribute

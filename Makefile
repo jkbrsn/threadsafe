@@ -34,7 +34,7 @@ test:
 
 bench:
 	@echo "==> Running benchmarks..."
-	@go test -count=$(N) $(TEST_FLAGS) -bench=. -benchmem -benchtime=5s ./...
+	@go test -count=$(N) $(TEST_FLAGS) -bench=. -benchmem -benchtime=4s -run=^$ -v ./...
 
 lint:
 	@echo "==> Running golangci-lint..."
