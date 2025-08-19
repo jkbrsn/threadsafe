@@ -2,29 +2,8 @@
 package threadsafe
 
 // PriorityQueue is a generic thread-safe priority queue interface (min-heap) for any type T.
-// Ordering is defined by the implementation at construction time via a comparator.
-// All operations must be safe for concurrent use by multiple goroutines.
-//
-// Semantics mirror container/heap where applicable; indices are stable only for the
-// lifetime between operations that may move elements. For external index maintenance
-// (e.g., storing an "index" field inside elements), implementations may provide a
-// swap-callback to notify callers when indices change.
-//
-// Complexity targets (amortized): Push/Pop O(log n), Peek O(1), Fix/RemoveAt O(log n).
-// Snapshot/Range do not mutate the queue.
-//
-// Notes on mutability:
-//   - If callers mutate ordering fields of an element already in the queue, they MUST
-//     call Fix or UpdateAt to restore queue invariants.
-//   - Peek returns a copy of T (or the pointer value for pointer T). Callers must
-//     avoid in-place mutations without Fix/UpdateAt.
-//
-// Optional key support:
-// Implementations may provide constructors that maintain an internal id->index map
-// to enable O(log n) RemoveByKey/UpdateByKey helpers.
-// These helpers are not part of the core interface to keep it generic.
-//
-// The interface is inspired by Queue/Set/Map in this repository for consistency.
+// Ordering is defined by the implementation at construction time via a comparator. Implementations
+// of this interface are expected to be safe for parallel use in multiple goroutines.
 type PriorityQueue[T any] interface {
 	// Push inserts one or more items into the queue.
 	Push(items ...T)
@@ -48,7 +27,12 @@ type PriorityQueue[T any] interface {
 }
 
 // PriorityQueueIndexed exposes index-based mutation helpers intended for advanced use-cases.
-// Implementations may choose not to support this interface.
+//
+// As the index-based helpers brings on mutation risks it's important to note:
+//   - If callers mutate ordering fields of an element already in the queue, they MUST
+//     call Fix or UpdateAt to restore queue invariants.
+//   - Peek returns a copy of T (or the pointer value for pointer T). Callers must
+//     avoid in-place mutations without Fix/UpdateAt.
 type PriorityQueueIndexed[T any] interface {
 	PriorityQueue[T]
 

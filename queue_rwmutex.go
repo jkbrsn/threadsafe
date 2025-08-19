@@ -3,6 +3,8 @@ package threadsafe
 
 import "sync"
 
+const shrinkThreshold = 64 // when head exceeds this and half the slice is unused, shrink
+
 // RWMutexQueue is a thread-safe FIFO queue implementation backed by a slice and protected
 // by a sync.RWMutex.
 //
@@ -11,8 +13,6 @@ import "sync"
 // it is resliced to reclaim memory.
 //
 // The zero value of RWMutexQueue is ready to use.
-const shrinkThreshold = 64 // when head exceeds this and half the slice is unused, shrink
-
 type RWMutexQueue[T any] struct {
 	mu    sync.RWMutex
 	items []T

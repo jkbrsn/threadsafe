@@ -26,12 +26,13 @@ func onSwapItem(i, j int, items []heapTestItem) {
 	items[j].Idx = j
 }
 
-func TestHeapPriorityQueueImplementsInterface(_ *testing.T) {
-	var _ PriorityQueue[int] = &HeapPriorityQueue[int]{}
+func TestCorePriorityQueueImplementsInterface(_ *testing.T) {
+	var _ PriorityQueue[int] = &CorePriorityQueue[int]{}
 }
 
-func TestRWMutexPriorityQueueImplementsInterface(_ *testing.T) {
-	var _ PriorityQueue[int] = &RWMutexPriorityQueue[int]{}
+func TestIndexedPriorityQueueImplementsInterface(_ *testing.T) {
+	var _ PriorityQueue[int] = &IndexedPriorityQueue[int]{}
+	var _ PriorityQueueIndexed[int] = &IndexedPriorityQueue[int]{}
 }
 
 // priorityQueueTestSuite defines a reusable test suite for PriorityQueue[T].
@@ -163,22 +164,10 @@ func TestPriorityQueueImplementations(t *testing.T) {
 		runPriorityQueueTestSuite(t, s)
 	})
 
-	t.Run("RWMutexPriorityQueue", func(t *testing.T) {
+	t.Run("IndexedPriorityQueue", func(t *testing.T) {
 		s := &priorityQueueTestSuite[heapTestItem]{
 			newPQ: func() PriorityQueue[heapTestItem] {
-				return NewRWMutexPriorityQueue(lessItem, onSwapItem)
-			},
-			less:  lessItem,
-			prio:  func(x heapTestItem) int { return x.Prio },
-			items: items,
-		}
-		runPriorityQueueTestSuite(t, s)
-	})
-
-	t.Run("HeapPriorityQueue", func(t *testing.T) {
-		s := &priorityQueueTestSuite[heapTestItem]{
-			newPQ: func() PriorityQueue[heapTestItem] {
-				return NewHeapPriorityQueue(lessItem, nil)
+				return NewIndexedPriorityQueue(lessItem, onSwapItem)
 			},
 			less:  lessItem,
 			prio:  func(x heapTestItem) int { return x.Prio },
@@ -216,10 +205,8 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	// Pop benchmark
 	b.Run("Pop", func(b *testing.B) {
 		pq := newPQ()
-		// Preload with N items (do not use b.Loop while timer stopped)
-		for i := 0; i < b.N; i++ {
-			pq.Push(i)
-		}
+		// Preload with N items
+		fillPQ(pq, b.N)
 		b.ResetTimer()
 		for b.Loop() {
 			if _, ok := pq.Pop(); !ok {
@@ -232,10 +219,8 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	// Mixed concurrent workload (approx 80% Peek, 15% Push, 5% Pop)
 	b.Run("ConcurrentMixed", func(b *testing.B) {
 		pq := newPQ()
-		// Pre-fill with some elements
-		for i := range 1000 {
-			pq.Push(i)
-		}
+		// Pre-fill with 1000 items
+		fillPQ(pq, 1000)
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			i := 0
@@ -254,6 +239,12 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	})
 }
 
+func fillPQ(pq PriorityQueue[int], n int) {
+	for i := range n {
+		pq.Push(i)
+	}
+}
+
 func BenchmarkPriorityQueueImplementations(b *testing.B) {
 	b.Run("CorePriorityQueue", func(b *testing.B) {
 		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
@@ -261,15 +252,9 @@ func BenchmarkPriorityQueueImplementations(b *testing.B) {
 		})
 	})
 
-	b.Run("RWMutexPriorityQueue", func(b *testing.B) {
+	b.Run("IndexedPriorityQueue", func(b *testing.B) {
 		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
-			return NewRWMutexPriorityQueue(func(a, b int) bool { return a < b }, nil)
-		})
-	})
-
-	b.Run("HeapPriorityQueue", func(b *testing.B) {
-		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
-			return NewHeapPriorityQueue(func(a, b int) bool { return a < b }, nil)
+			return NewIndexedPriorityQueue(func(a, b int) bool { return a < b }, nil)
 		})
 	})
 }

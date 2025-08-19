@@ -3,23 +3,18 @@ package threadsafe
 
 import "sync"
 
-// CorePriorityQueue is a minimal thread-safe priority queue that implements only
-// the core PriorityQueue interface: Push, Pop, Peek, Len, Clear, Range.
-// It does not expose any indexed mutation helpers, nor onSwap callbacks.
+// CorePriorityQueue is a thread-safe priority queue that implements the core PriorityQueue
+// interface. It does not expose any indexed mutation helpers, nor onSwap callbacks.
 //
-// It is a generic min-heap parameterized by a less comparator.
-// The zero value is not ready; construct via NewCorePriorityQueue.
+// It is a generic min-heap parameterized by a less comparator. The zero value is not ready;
+// construct via NewCorePriorityQueue. The less(a,b) comparator must define a strict weak ordering
+// (irreflexive, transitive, consistent).
 //
 // Complexity: Push/Pop O(log n), Peek O(1); Range does not mutate the heap.
 type CorePriorityQueue[T any] struct {
 	mu    sync.RWMutex
 	items []T
 	less  func(a, b T) bool
-}
-
-// NewCorePriorityQueue creates a new minimal priority queue using the given comparator.
-func NewCorePriorityQueue[T any](less func(a, b T) bool) *CorePriorityQueue[T] {
-	return &CorePriorityQueue[T]{less: less}
 }
 
 // Push inserts one or more items into the queue.
@@ -77,7 +72,8 @@ func (q *CorePriorityQueue[T]) Clear() {
 	q.mu.Unlock()
 }
 
-// Range iterates over a snapshot of items in arbitrary internal order.
+// Range iterates over a snapshot of items in arbitrary internal order. Mutations during range
+// does not affect the current iteration.
 func (q *CorePriorityQueue[T]) Range(f func(item T) bool) {
 	q.mu.RLock()
 	snap := make([]T, len(q.items))
@@ -101,22 +97,24 @@ func (q *CorePriorityQueue[T]) swap(i, j int) {
 }
 
 func (q *CorePriorityQueue[T]) up(i int) {
+	idx := i
 	for {
-		p := (i - 1) / 2
-		if i == 0 || !q.lessIdx(i, p) {
+		p := (idx - 1) / 2
+		if idx == 0 || !q.lessIdx(idx, p) {
 			break
 		}
-		q.swap(i, p)
-		i = p
+		q.swap(idx, p)
+		idx = p
 	}
 }
 
 // down moves item at i down; returns true if moved down.
 func (q *CorePriorityQueue[T]) down(i int) bool {
+	idx := i
 	n := len(q.items)
 	moved := false
 	for {
-		l := 2*i + 1
+		l := 2*idx + 1
 		if l >= n {
 			break
 		}
@@ -125,15 +123,17 @@ func (q *CorePriorityQueue[T]) down(i int) bool {
 		if r < n && q.lessIdx(r, l) {
 			smallest = r
 		}
-		if !q.lessIdx(smallest, i) {
+		if !q.lessIdx(smallest, idx) {
 			break
 		}
-		q.swap(i, smallest)
-		i = smallest
+		q.swap(idx, smallest)
+		idx = smallest
 		moved = true
 	}
 	return moved
 }
 
-// Ensure CorePriorityQueue implements the core PriorityQueue interface.
-var _ PriorityQueue[any] = (*CorePriorityQueue[any])(nil)
+// NewCorePriorityQueue creates a new minimal priority queue using the given comparator.
+func NewCorePriorityQueue[T any](less func(a, b T) bool) *CorePriorityQueue[T] {
+	return &CorePriorityQueue[T]{less: less}
+}
