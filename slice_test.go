@@ -62,7 +62,7 @@ func (s *sliceTestSuite[T]) TestConcurrentAppend(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 	for i := range numGoroutines {
-		go func(base int) {
+		go func(_ int) {
 			defer wg.Done()
 			for j := range perGoroutine {
 				slice.Append(s.items[(i*perGoroutine+j)%len(s.items)])
@@ -84,131 +84,109 @@ func runSliceTestSuite[T comparable](t *testing.T, s *sliceTestSuite[T]) {
 	t.Run("ConcurrentAppend", s.TestConcurrentAppend)
 }
 
+func intTestSuite(newSlice func() Slice[int]) *sliceTestSuite[int] {
+	return &sliceTestSuite[int]{
+		newSlice: newSlice,
+		item1:    1,
+		item2:    2,
+		item3:    3,
+		items:    []int{1, 2, 3, 4, 5},
+	}
+}
+
+func stringTestSuite(newSlice func() Slice[string]) *sliceTestSuite[string] {
+	return &sliceTestSuite[string]{
+		newSlice: newSlice,
+		item1:    "apple",
+		item2:    "banana",
+		item3:    "cherry",
+		items:    []string{"apple", "banana", "cherry", "orange", "lime"},
+	}
+}
+
+type testStruct struct {
+	ID   int
+	Name string
+}
+
+func structTestSuite(newSlice func() Slice[testStruct]) *sliceTestSuite[testStruct] {
+	return &sliceTestSuite[testStruct]{
+		newSlice: func() Slice[testStruct] {
+			return newSlice()
+		},
+		item1: testStruct{1, "A"}, item2: testStruct{2, "B"}, item3: testStruct{3, "C"},
+		items: []testStruct{
+			{1, "A"},
+			{2, "B"},
+			{3, "C"},
+			{4, "D"},
+			{5, "E"},
+		},
+	}
+}
+
 // TestSliceImplementations sets up and runs the Slice test suite.
+// revive:disable:cognitive-complexity allow
 func TestSliceImplementations(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		t.Run("MutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[string]{
-				newSlice: func() Slice[string] {
-					return NewMutexSlice[string](0)
-				},
-				item1: "apple", item2: "banana", item3: "cherry",
-				items: []string{"apple", "banana", "cherry", "orange", "lime"},
-			}
+			suite := stringTestSuite(func() Slice[string] {
+				return NewMutexSlice[string](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("RWMutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[string]{
-				newSlice: func() Slice[string] {
-					return NewRWMutexSlice[string](0)
-				},
-				item1: "apple", item2: "banana", item3: "cherry",
-				items: []string{"apple", "banana", "cherry", "orange", "lime"},
-			}
+			suite := stringTestSuite(func() Slice[string] {
+				return NewRWMutexSlice[string](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("ShardedSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[string]{
-				newSlice: func() Slice[string] {
-					return NewShardedSlice[string](0, 16)
-				},
-				item1: "apple", item2: "banana", item3: "cherry",
-				items: []string{"apple", "banana", "cherry", "orange", "lime"},
-			}
+			suite := stringTestSuite(func() Slice[string] {
+				return NewShardedSlice[string](0, 16)
+			})
 			runSliceTestSuite(t, suite)
 		})
 	})
 
 	t.Run("int", func(t *testing.T) {
 		t.Run("MutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[int]{
-				newSlice: func() Slice[int] {
-					return NewMutexSlice[int](0)
-				},
-				item1: 1, item2: 2, item3: 3,
-				items: []int{1, 2, 3, 4, 5},
-			}
+			suite := intTestSuite(func() Slice[int] {
+				return NewMutexSlice[int](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("RWMutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[int]{
-				newSlice: func() Slice[int] {
-					return NewRWMutexSlice[int](0)
-				},
-				item1: 1, item2: 2, item3: 3,
-				items: []int{1, 2, 3, 4, 5},
-			}
+			suite := intTestSuite(func() Slice[int] {
+				return NewRWMutexSlice[int](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("ShardedSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[int]{
-				newSlice: func() Slice[int] {
-					return NewShardedSlice[int](0, 16)
-				},
-				item1: 1, item2: 2, item3: 3,
-				items: []int{1, 2, 3, 4, 5},
-			}
+			suite := intTestSuite(func() Slice[int] {
+				return NewShardedSlice[int](0, 16)
+			})
 			runSliceTestSuite(t, suite)
 		})
 	})
 
-	type testStruct struct {
-		ID   int
-		Name string
-	}
 	t.Run("struct", func(t *testing.T) {
 		t.Run("MutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[testStruct]{
-				newSlice: func() Slice[testStruct] {
-					return NewMutexSlice[testStruct](0)
-				},
-				item1: testStruct{1, "A"},
-				item2: testStruct{2, "B"},
-				item3: testStruct{3, "C"},
-				items: []testStruct{
-					{1, "A"},
-					{2, "B"},
-					{3, "C"},
-					{4, "D"},
-					{5, "E"},
-				},
-			}
+			suite := structTestSuite(func() Slice[testStruct] {
+				return NewMutexSlice[testStruct](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("RWMutexSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[testStruct]{
-				newSlice: func() Slice[testStruct] {
-					return NewRWMutexSlice[testStruct](0)
-				},
-				item1: testStruct{1, "A"},
-				item2: testStruct{2, "B"},
-				item3: testStruct{3, "C"},
-				items: []testStruct{
-					{1, "A"},
-					{2, "B"},
-					{3, "C"},
-					{4, "D"},
-					{5, "E"},
-				},
-			}
+			suite := structTestSuite(func() Slice[testStruct] {
+				return NewRWMutexSlice[testStruct](0)
+			})
 			runSliceTestSuite(t, suite)
 		})
 		t.Run("ShardedSlice", func(t *testing.T) {
-			suite := &sliceTestSuite[testStruct]{
-				newSlice: func() Slice[testStruct] {
-					return NewShardedSlice[testStruct](0, 16)
-				},
-				item1: testStruct{1, "A"},
-				item2: testStruct{2, "B"},
-				item3: testStruct{3, "C"},
-				items: []testStruct{
-					{1, "A"},
-					{2, "B"},
-					{3, "C"},
-					{4, "D"},
-					{5, "E"},
-				},
-			}
+			suite := structTestSuite(func() Slice[testStruct] {
+				return NewShardedSlice[testStruct](0, 16)
+			})
 			runSliceTestSuite(t, suite)
 		})
 	})

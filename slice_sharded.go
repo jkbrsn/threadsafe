@@ -72,11 +72,12 @@ func (s *ShardedSlice[T]) Len() int {
 // Each shard is pre-allocated with initialCap capacity.  shardCount must be
 // >0; if <=0, it is coerced to 1.
 func NewShardedSlice[T any](shardCount, initialCap int) *ShardedSlice[T] {
+	nShards := shardCount
 	if shardCount <= 0 {
-		shardCount = 1
+		nShards = 1
 	}
-	shards := make([]Slice[T], shardCount)
-	for i := 0; i < shardCount; i++ {
+	shards := make([]Slice[T], nShards)
+	for i := 0; i < nShards; i++ {
 		// Use a minimal internal implementation – simple mutex slice.
 		shards[i] = NewRWMutexSlice[T](initialCap)
 	}
