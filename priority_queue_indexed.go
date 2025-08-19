@@ -193,7 +193,8 @@ func (h *IndexedPriorityQueue[T]) down(i int) bool {
 
 // NewIndexedPriorityQueue creates a new heap with the provided comparator.
 // less(a,b) should return true when a has higher priority than b (i.e., a comes before b).
-// onSwap is optional; if non-nil it's called under the write lock whenever two items swap indices.
+// onSwap is optional; if non-nil it's called under the write lock whenever two items swap indices
+// and as such must not block or call back into the queue.
 func NewIndexedPriorityQueue[T any](
 	less func(a, b T) bool,
 	onSwap func(i, j int, items []T),
