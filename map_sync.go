@@ -130,3 +130,10 @@ func NewSyncMap[K comparable, V any](equalFn func(V, V) bool) *SyncMap[K, V] {
 		equal: equalFn,
 	}
 }
+
+// SyncMapFromMap creates a new instance of SyncMap from values in the provided map.
+func SyncMapFromMap[K comparable, V any](m map[K]V, equalFn func(V, V) bool) *SyncMap[K, V] {
+	newMap := NewSyncMap[K, V](equalFn)
+	newMap.SetMany(m)
+	return newMap
+}

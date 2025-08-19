@@ -248,7 +248,7 @@ func testIntStructMapImplementations(t *testing.T) {
 	t.Run("SyncMap", func(t *testing.T) {
 		suite := &mapTestSuite[int, testStruct]{
 			newMap: func() Map[int, testStruct] {
-				return NewSyncMap[int, testStruct](equalFunc)
+				return NewSyncMap[int](equalFunc)
 			},
 			key1: 1, key2: 2, key3: 3,
 			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},

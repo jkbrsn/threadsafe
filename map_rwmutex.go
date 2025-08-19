@@ -151,3 +151,10 @@ func NewRWMutexMap[K comparable, V any](equalFn func(V, V) bool) *RWMutexMap[K, 
 		values: make(map[K]V),
 	}
 }
+
+// RWMutexMapFromMap creates a new instance of RWMutexMap from values in the provided map.
+func RWMutexMapFromMap[K comparable, V any](m map[K]V, equalFn func(V, V) bool) *RWMutexMap[K, V] {
+	newMap := NewRWMutexMap[K, V](equalFn)
+	newMap.SetMany(m)
+	return newMap
+}

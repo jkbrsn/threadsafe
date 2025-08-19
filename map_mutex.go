@@ -144,6 +144,13 @@ func (m *MutexMap[K, V]) Range(f func(key K, value V) bool) {
 	}
 }
 
+// MutexMapFromMap creates a new instance of MutexMap from values in the provided map.
+func MutexMapFromMap[K comparable, V any](m map[K]V, equalFn func(V, V) bool) *MutexMap[K, V] {
+	newMap := NewMutexMap[K, V](equalFn)
+	newMap.SetMany(m)
+	return newMap
+}
+
 // NewMutexMap creates a new instance of MutexMap.
 func NewMutexMap[K comparable, V any](equalFn func(V, V) bool) *MutexMap[K, V] {
 	return &MutexMap[K, V]{
