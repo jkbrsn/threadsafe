@@ -1,6 +1,7 @@
 package threadsafe
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 
@@ -133,6 +134,64 @@ func TestSliceImplementations(t *testing.T) {
 				},
 			}
 			runSliceTestSuite(t, suite)
+		})
+	})
+}
+
+//
+// BENCHMARKS
+//
+
+func benchmarkSlice(b *testing.B, newSlice func() Slice[string]) {
+	// Simple write benchmark
+	b.Run("Append", func(b *testing.B) {
+		slice := newSlice()
+		b.ResetTimer()
+		for b.Loop() {
+			slice.Append("item")
+		}
+	})
+
+	// Simple read benchmark
+	b.Run("Peek", func(b *testing.B) {
+		slice := newSlice()
+		slice.Append("item")
+		b.ResetTimer()
+		for b.Loop() {
+			slice.Peek()
+		}
+	})
+
+	// Concurrent workload (90% reads, 10% writes)
+	b.Run("ConcurrentReadWrite", func(b *testing.B) {
+		slice := newSlice()
+		// Pre-fill the set with some data
+		for i := range 1000 {
+			slice.Append(strconv.Itoa(i))
+		}
+		b.ResetTimer()
+
+		b.RunParallel(func(pb *testing.PB) {
+			i := 0
+			for pb.Next() {
+				// Generate an item to operate on
+				item := strconv.Itoa(i % 1000)
+				// 90% read, 10% write
+				if i%10 == 0 {
+					slice.Append(item)
+				} else {
+					slice.Peek()
+				}
+				i++
+			}
+		})
+	})
+}
+
+func BenchmarkSliceImplementations(b *testing.B) {
+	b.Run("MutexSlice", func(b *testing.B) {
+		benchmarkSlice(b, func() Slice[string] {
+			return NewMutexSlice[string](0)
 		})
 	})
 }
