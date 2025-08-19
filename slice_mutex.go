@@ -10,13 +10,6 @@ type MutexSlice[T any] struct {
 	data []T
 }
 
-// NewMutexSlice creates a new MutexSlice with an optional initial capacity.
-func NewMutexSlice[T any](initialCap int) *MutexSlice[T] {
-	return &MutexSlice[T]{
-		data: make([]T, 0, initialCap),
-	}
-}
-
 // Append appends items to the buffer in a thread-safe way.
 func (b *MutexSlice[T]) Append(item ...T) {
 	b.mu.Lock()
@@ -49,4 +42,18 @@ func (b *MutexSlice[T]) Len() int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return len(b.data)
+}
+
+// MutexSliceFromSlice creates a new MutexSlice from a slice.
+func MutexSliceFromSlice[T any](slice []T) *MutexSlice[T] {
+	newSlice := NewMutexSlice[T](len(slice))
+	newSlice.Append(slice...)
+	return newSlice
+}
+
+// NewMutexSlice creates a new MutexSlice with an optional initial capacity.
+func NewMutexSlice[T any](initialCap int) *MutexSlice[T] {
+	return &MutexSlice[T]{
+		data: make([]T, 0, initialCap),
+	}
 }
