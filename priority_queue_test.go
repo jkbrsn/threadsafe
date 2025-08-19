@@ -153,6 +153,16 @@ func TestPriorityQueueImplementations(t *testing.T) {
 		return []heapTestItem{{ID: "a", Prio: 3}, {ID: "b", Prio: 1}, {ID: "c", Prio: 2}}
 	}
 
+	t.Run("CorePriorityQueue", func(t *testing.T) {
+		s := &priorityQueueTestSuite[heapTestItem]{
+			newPQ: func() PriorityQueue[heapTestItem] { return NewCorePriorityQueue(lessItem) },
+			less:  lessItem,
+			prio:  func(x heapTestItem) int { return x.Prio },
+			items: items,
+		}
+		runPriorityQueueTestSuite(t, s)
+	})
+
 	t.Run("RWMutexPriorityQueue", func(t *testing.T) {
 		s := &priorityQueueTestSuite[heapTestItem]{
 			newPQ: func() PriorityQueue[heapTestItem] {
@@ -244,6 +254,12 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 }
 
 func BenchmarkPriorityQueueImplementations(b *testing.B) {
+	b.Run("CorePriorityQueue", func(b *testing.B) {
+		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
+			return NewCorePriorityQueue(func(a, b int) bool { return a < b })
+		})
+	})
+
 	b.Run("RWMutexPriorityQueue", func(b *testing.B) {
 		benchmarkPriorityQueue(b, func() PriorityQueue[int] {
 			return NewRWMutexPriorityQueue(func(a, b int) bool { return a < b }, nil)
