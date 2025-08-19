@@ -216,7 +216,8 @@ func benchmarkPriorityQueue(b *testing.B, newPQ func() PriorityQueue[int]) {
 	// Pop benchmark
 	b.Run("Pop", func(b *testing.B) {
 		pq := newPQ()
-		for i := 0; b.Loop(); i++ { // preload with N items so we can pop in loop
+		// Preload with N items (do not use b.Loop while timer stopped)
+		for i := 0; i < b.N; i++ {
 			pq.Push(i)
 		}
 		b.ResetTimer()
