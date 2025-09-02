@@ -81,6 +81,26 @@ func (s *SyncMap[K, V]) Swap(key K, value V) (V, bool) {
 	return old.(V), true //nolint:revive
 }
 
+// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns
+// the given value. The loaded result is true if the value was loaded, false if stored.
+func (s *SyncMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
+	v, loaded := s.values.LoadOrStore(key, value)
+	if !loaded {
+		return value, false
+	}
+	return v.(V), true //nolint:revive
+}
+
+// LoadAndDelete deletes the value for a key, returning the previous value if any.
+func (s *SyncMap[K, V]) LoadAndDelete(key K) (V, bool) {
+	v, loaded := s.values.LoadAndDelete(key)
+	if !loaded {
+		var zero V
+		return zero, false
+	}
+	return v.(V), true //nolint:revive
+}
+
 // GetAll returns all key-value pairs in the store.
 func (s *SyncMap[K, V]) GetAll() map[K]V {
 	result := make(map[K]V)

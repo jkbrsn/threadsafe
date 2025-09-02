@@ -92,6 +92,33 @@ func (m *RWMutexMap[K, V]) Swap(key K, value V) (V, bool) {
 	return oldValue, true
 }
 
+// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns
+// the given value. The loaded result is true if the value was loaded, false if stored.
+func (m *RWMutexMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if v, ok := m.values[key]; ok {
+		return v, true
+	}
+	m.values[key] = value
+	return value, false
+}
+
+// LoadAndDelete deletes the value for a key, returning the previous value if any.
+func (m *RWMutexMap[K, V]) LoadAndDelete(key K) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	v, ok := m.values[key]
+	if ok {
+		delete(m.values, key)
+		return v, true
+	}
+	var zero V
+	return zero, false
+}
+
 // GetAll returns a copy of all key-value pairs in the map.
 func (m *RWMutexMap[K, V]) GetAll() map[K]V {
 	m.mu.RLock()

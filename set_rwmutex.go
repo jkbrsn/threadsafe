@@ -13,25 +13,29 @@ type RWMutexSet[T comparable] struct {
 }
 
 // Add stores an item in the set.
-func (s *RWMutexSet[T]) Add(item T) {
+func (s *RWMutexSet[T]) Add(item T) (added bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if _, exists := s.items[item]; !exists {
 		s.items[item] = struct{}{}
 		s.size++
+		return true
 	}
+	return false
 }
 
-// Remove deletes an item from the set.
-func (s *RWMutexSet[T]) Remove(item T) {
+// Delete removes an item from the set.
+func (s *RWMutexSet[T]) Delete(item T) (removed bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if _, exists := s.items[item]; exists {
 		delete(s.items, item)
 		s.size--
+		return true
 	}
+	return false
 }
 
 // Has returns true if the item is in the set, otherwise false.
