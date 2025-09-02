@@ -105,6 +105,20 @@ func (m *RWMutexMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
 	return value, false
 }
 
+// LoadAndDelete deletes the value for a key, returning the previous value if any.
+func (m *RWMutexMap[K, V]) LoadAndDelete(key K) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	v, ok := m.values[key]
+	if ok {
+		delete(m.values, key)
+		return v, true
+	}
+	var zero V
+	return zero, false
+}
+
 // GetAll returns a copy of all key-value pairs in the map.
 func (m *RWMutexMap[K, V]) GetAll() map[K]V {
 	m.mu.RLock()

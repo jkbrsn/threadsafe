@@ -91,6 +91,16 @@ func (s *SyncMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
 	return v.(V), true //nolint:revive
 }
 
+// LoadAndDelete deletes the value for a key, returning the previous value if any.
+func (s *SyncMap[K, V]) LoadAndDelete(key K) (V, bool) {
+	v, loaded := s.values.LoadAndDelete(key)
+	if !loaded {
+		var zero V
+		return zero, false
+	}
+	return v.(V), true //nolint:revive
+}
+
 // GetAll returns all key-value pairs in the store.
 func (s *SyncMap[K, V]) GetAll() map[K]V {
 	result := make(map[K]V)

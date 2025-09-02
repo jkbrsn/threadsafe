@@ -17,11 +17,13 @@ type Map[K comparable, V any] interface {
 
 	// CompareAndSwap executes the compare-and-swap operation for a key.
 	CompareAndSwap(key K, oldValue, newValue V) bool
-	// Swap swaps the value for a key and returns the previous value if any.
-	Swap(key K, value V) (previous V, loaded bool)
+	// LoadAndDelete deletes the value for a key, returning the previous value if any.
+	LoadAndDelete(key K) (previous V, loaded bool)
 	// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and
 	// returns the given value. The loaded result is true if the value was loaded, false if stored.
 	LoadOrStore(key K, value V) (previous V, loaded bool)
+	// Swap swaps the value for a key and returns the previous value if any.
+	Swap(key K, value V) (previous V, loaded bool)
 
 	// GetAll returns all key-value pairs in the map.
 	GetAll() map[K]V
