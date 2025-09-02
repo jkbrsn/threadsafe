@@ -21,13 +21,15 @@ func NewSyncMapSet[T comparable]() *SyncMapSet[T] {
 }
 
 // Add stores an item in the set.
-func (s *SyncMapSet[T]) Add(item T) {
-	s.items.Store(item, struct{}{})
+func (s *SyncMapSet[T]) Add(item T) (added bool) {
+	_, loaded := s.items.LoadOrStore(item, struct{}{})
+	return !loaded
 }
 
-// Remove deletes an item from the set.
-func (s *SyncMapSet[T]) Remove(item T) {
-	s.items.Delete(item)
+// Delete removes an item from the set.
+func (s *SyncMapSet[T]) Delete(item T) (removed bool) {
+	_, loaded := s.items.LoadAndDelete(item)
+	return loaded
 }
 
 // Has returns true if the item is in the set, otherwise false.

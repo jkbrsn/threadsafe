@@ -30,14 +30,14 @@ func (s *setTestSuite[T]) TestBasicOperations(t *testing.T) {
 	assert.Equal(t, 0, set.Len())
 
 	// Test Add
-	set.Add(s.item1)
-	set.Add(s.item2)
+	assert.True(t, set.Add(s.item1))
+	assert.True(t, set.Add(s.item2))
 	assert.Equal(t, 2, set.Len())
 	assert.True(t, set.Has(s.item1))
 	assert.True(t, set.Has(s.item2))
 
 	// Test Add duplicate (should not increase length)
-	set.Add(s.item1)
+	assert.False(t, set.Add(s.item1))
 	assert.Equal(t, 2, set.Len())
 	assert.True(t, set.Has(s.item1))
 
@@ -45,13 +45,13 @@ func (s *setTestSuite[T]) TestBasicOperations(t *testing.T) {
 	assert.False(t, set.Has(s.item3))
 
 	// Test Remove
-	set.Remove(s.item1)
+	assert.True(t, set.Delete(s.item1))
 	assert.Equal(t, 1, set.Len())
 	assert.False(t, set.Has(s.item1))
 	assert.True(t, set.Has(s.item2))
 
-	// Test Remove non-existent item (should not panic)
-	set.Remove(s.item3)
+	// Test Delete non-existent item (should not panic)
+	assert.False(t, set.Delete(s.item3))
 	assert.Equal(t, 1, set.Len())
 
 	// Test Clear
@@ -69,9 +69,9 @@ func (s *setTestSuite[T]) TestSlice(t *testing.T) {
 	assert.Empty(t, slice)
 
 	// Add items
-	set.Add(s.item1)
-	set.Add(s.item2)
-	set.Add(s.item1) // Duplicate should be ignored
+	assert.True(t, set.Add(s.item1))
+	assert.True(t, set.Add(s.item2))
+	assert.False(t, set.Add(s.item1)) // Duplicate should be ignored
 
 	// Get slice
 	slice = set.Slice()
@@ -328,7 +328,7 @@ func TestSetConcurrentRemoval(t *testing.T) {
 				wg.Add(1)
 				go func(index int) {
 					defer wg.Done()
-					set.Remove("item" + strconv.Itoa(index))
+					set.Delete("item" + strconv.Itoa(index))
 				}(i)
 			}
 
