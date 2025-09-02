@@ -5,7 +5,7 @@ package threadsafe
 // It allows concurrent appends and atomic flushes.
 type Map[K comparable, V any] interface {
 	// Get retrieves the value for the given key.
-	Get(key K) (V, bool)
+	Get(key K) (value V, loaded bool)
 	// Set stores a value for the given key.
 	Set(key K, value V)
 	// Delete removes the key from the map.
@@ -21,7 +21,7 @@ type Map[K comparable, V any] interface {
 	Swap(key K, value V) (previous V, loaded bool)
 	// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and
 	// returns the given value. The loaded result is true if the value was loaded, false if stored.
-	LoadOrStore(key K, value V) (V, bool)
+	LoadOrStore(key K, value V) (previous V, loaded bool)
 
 	// GetAll returns all key-value pairs in the map.
 	GetAll() map[K]V
