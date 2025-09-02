@@ -157,6 +157,20 @@ func (s *mapTestSuite[K, V]) TestRange(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func (s *mapTestSuite[K, V]) TestLoadOrStore(t *testing.T) {
+	store := s.newMap()
+
+	v, loaded := store.LoadOrStore(s.key1, s.val1)
+	assert.False(t, loaded)
+	assert.Equal(t, s.val1, v)
+
+	v, loaded = store.LoadOrStore(s.key1, s.val2)
+	assert.True(t, loaded)
+	assert.Equal(t, s.val1, v)
+
+	assert.Equal(t, 1, store.Len())
+}
+
 // runMapTestSuite runs all tests in the suite.
 func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
@@ -166,6 +180,7 @@ func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
 	t.Run("GetMany", s.TestGetMany)
 	t.Run("SetMany", s.TestSetMany)
 	t.Run("Range", s.TestRange)
+	t.Run("LoadOrStore", s.TestLoadOrStore)
 }
 
 // testStringIntMapImplementations tests all map implementations with string-int types.

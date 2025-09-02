@@ -92,6 +92,19 @@ func (m *MutexMap[K, V]) Swap(key K, value V) (V, bool) {
 	return oldValue, true
 }
 
+// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns
+// the given value. The loaded result is true if the value was loaded, false if stored.
+func (m *MutexMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if v, ok := m.values[key]; ok {
+		return v, true
+	}
+	m.values[key] = value
+	return value, false
+}
+
 // GetAll returns a copy of all key-value pairs in the map.
 func (m *MutexMap[K, V]) GetAll() map[K]V {
 	m.mu.Lock()
