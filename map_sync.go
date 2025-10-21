@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // SyncMap is a thread-safe implementation of Map using sync.Map.
 // Note: the internal implementation of sync.Map requires a comparable type to run the
@@ -138,6 +141,36 @@ func (s *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	s.values.Range(func(k, v any) bool {
 		return f(k.(K), v.(V))
 	})
+}
+
+// All returns an iterator over key-value pairs in the map.
+// The iteration order is not guaranteed to be consistent.
+func (s *SyncMap[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		s.values.Range(func(k, v any) bool {
+			return yield(k.(K), v.(V)) //nolint:revive
+		})
+	}
+}
+
+// Keys returns an iterator over keys in the map.
+// The iteration order is not guaranteed to be consistent.
+func (s *SyncMap[K, V]) Keys() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		s.values.Range(func(k, _ any) bool {
+			return yield(k.(K)) //nolint:revive
+		})
+	}
+}
+
+// Values returns an iterator over values in the map.
+// The iteration order is not guaranteed to be consistent.
+func (s *SyncMap[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		s.values.Range(func(_, v any) bool {
+			return yield(v.(V)) //nolint:revive
+		})
+	}
 }
 
 // NewSyncMap creates a new instance of SyncMap. The equalFn parameter is required to

@@ -2,6 +2,7 @@
 package threadsafe
 
 import (
+	"iter"
 	"maps"
 	"sync"
 )
@@ -167,6 +168,60 @@ func (m *MutexMap[K, V]) Range(f func(key K, value V) bool) {
 	for k, v := range m.values {
 		if !f(k, v) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over key-value pairs in the map.
+// The iteration order is not guaranteed to be consistent.
+func (m *MutexMap[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		m.mu.Lock()
+		snapshot := maps.Clone(m.values)
+		m.mu.Unlock()
+
+		for k, v := range snapshot {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// Keys returns an iterator over keys in the map.
+// The iteration order is not guaranteed to be consistent.
+func (m *MutexMap[K, V]) Keys() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		m.mu.Lock()
+		keys := make([]K, 0, len(m.values))
+		for k := range m.values {
+			keys = append(keys, k)
+		}
+		m.mu.Unlock()
+
+		for _, k := range keys {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// Values returns an iterator over values in the map.
+// The iteration order is not guaranteed to be consistent.
+func (m *MutexMap[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		m.mu.Lock()
+		values := make([]V, 0, len(m.values))
+		for _, v := range m.values {
+			values = append(values, v)
+		}
+		m.mu.Unlock()
+
+		for _, v := range values {
+			if !yield(v) {
+				return
+			}
 		}
 	}
 }
