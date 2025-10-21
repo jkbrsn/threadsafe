@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // Heap is a generic binary heap interface for any type T.
 // Ordering is defined by the implementation, typically via a provided less function.
 // All operations are expected to be safe for concurrent use by multiple goroutines.
@@ -30,4 +32,14 @@ type Heap[T any] interface {
 	// Range calls f sequentially for each item present in the heap in internal
 	// heap order. If f returns false, Range stops the iteration early.
 	Range(f func(item T) bool)
+
+	// All returns an iterator over items in the heap in internal heap order (not sorted).
+	// The iteration order is implementation-defined and not guaranteed to be priority-sorted.
+	//
+	// Example usage:
+	//
+	//	for item := range myHeap.All() {
+	//	    fmt.Println(item)
+	//	}
+	All() iter.Seq[T]
 }

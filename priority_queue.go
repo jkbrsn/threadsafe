@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // PriorityQueue is a generic thread-safe priority queue interface (min-heap) for any type T.
 // Ordering is defined by the implementation at construction time via a comparator. Implementations
 // of this interface are expected to be safe for parallel use in multiple goroutines.
@@ -24,6 +26,16 @@ type PriorityQueue[T any] interface {
 
 	// Range iterates over items in arbitrary internal order. Returning false stops early.
 	Range(f func(item T) bool)
+
+	// All returns an iterator over items in the queue in internal heap order (not sorted).
+	// The iteration order is implementation-defined and not guaranteed to be priority-sorted.
+	//
+	// Example usage:
+	//
+	//	for item := range myPQ.All() {
+	//	    fmt.Println(item)
+	//	}
+	All() iter.Seq[T]
 }
 
 // PriorityQueueIndexed exposes index-based mutation helpers intended for advanced use-cases.

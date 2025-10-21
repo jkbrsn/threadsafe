@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // Set is a generic interface for a set store of any type T.
 type Set[T comparable] interface {
 	// Add stores an item in the set.
@@ -18,4 +20,14 @@ type Set[T comparable] interface {
 	// Range calls f sequentially for each item present in the set.
 	// If f returns false, range stops the iteration.
 	Range(f func(item T) bool)
+
+	// All returns an iterator over all items in the set.
+	// The iteration order is not guaranteed to be consistent.
+	//
+	// Example usage:
+	//
+	//	for item := range mySet.All() {
+	//	    fmt.Println(item)
+	//	}
+	All() iter.Seq[T]
 }

@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // Map is a generic interface for stores with any type V.
 // It allows concurrent appends and atomic flushes.
 type Map[K comparable, V any] interface {
@@ -39,6 +41,36 @@ type Map[K comparable, V any] interface {
 	// Range calls f sequentially for each key and value present in the map.
 	// If f returns false, range stops the iteration.
 	Range(f func(key K, value V) bool)
+
+	// All returns an iterator over key-value pairs in the map.
+	// The iteration order is not guaranteed to be consistent.
+	//
+	// Example usage:
+	//
+	//	for k, v := range myMap.All() {
+	//	    fmt.Println(k, v)
+	//	}
+	All() iter.Seq2[K, V]
+
+	// Keys returns an iterator over keys in the map.
+	// The iteration order is not guaranteed to be consistent.
+	//
+	// Example usage:
+	//
+	//	for k := range myMap.Keys() {
+	//	    fmt.Println(k)
+	//	}
+	Keys() iter.Seq[K]
+
+	// Values returns an iterator over values in the map.
+	// The iteration order is not guaranteed to be consistent.
+	//
+	// Example usage:
+	//
+	//	for v := range myMap.Values() {
+	//	    fmt.Println(v)
+	//	}
+	Values() iter.Seq[V]
 }
 
 // MapDiff represents the difference between two maps.

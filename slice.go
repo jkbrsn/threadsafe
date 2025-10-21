@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // Slice is a generic interface for stores with any type T.
 type Slice[T any] interface {
 	// Append appends an item to the buffer in a thread-safe way.
@@ -13,4 +15,13 @@ type Slice[T any] interface {
 	Peek() []T
 	// Len returns the current number of items in the buffer.
 	Len() int
+
+	// All returns an iterator over all items in the slice in order.
+	//
+	// Example usage:
+	//
+	//	for item := range mySlice.All() {
+	//	    fmt.Println(item)
+	//	}
+	All() iter.Seq[T]
 }
