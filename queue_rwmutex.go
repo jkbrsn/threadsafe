@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 const shrinkThreshold = 64 // when head exceeds this and half the slice is unused, shrink
 
@@ -109,6 +112,23 @@ func (q *RWMutexQueue[T]) Range(f func(item T) bool) {
 	for _, it := range items {
 		if !f(it) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over items in the queue from front to back.
+// The iteration order matches the queue order (FIFO).
+func (q *RWMutexQueue[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		q.mu.RLock()
+		snapshot := make([]T, len(q.items)-q.head)
+		copy(snapshot, q.items[q.head:])
+		q.mu.RUnlock()
+
+		for _, item := range snapshot {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }

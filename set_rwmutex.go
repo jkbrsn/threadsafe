@@ -2,6 +2,7 @@
 package threadsafe
 
 import (
+	"iter"
 	"sync"
 )
 
@@ -85,6 +86,25 @@ func (s *RWMutexSet[T]) Range(f func(item T) bool) {
 	for item := range s.items {
 		if !f(item) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over all items in the set.
+// The iteration order is not guaranteed to be consistent.
+func (s *RWMutexSet[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mu.RLock()
+		items := make([]T, 0, len(s.items))
+		for item := range s.items {
+			items = append(items, item)
+		}
+		s.mu.RUnlock()
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }

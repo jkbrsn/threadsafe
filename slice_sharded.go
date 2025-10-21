@@ -2,6 +2,7 @@
 package threadsafe
 
 import (
+	"iter"
 	"sync/atomic"
 )
 
@@ -31,19 +32,13 @@ func (s *ShardedSlice[T]) Append(item ...T) {
 	s.shards[idx].Append(item...)
 }
 
-// Flush atomically retrieves and clears all shards, concatenating the results into a single slice.
-func (s *ShardedSlice[T]) Flush() []T {
-	// First pass: determine total length
+// Len returns the combined length of all shards.
+func (s *ShardedSlice[T]) Len() int {
 	total := 0
 	for _, sh := range s.shards {
 		total += sh.Len()
 	}
-
-	out := make([]T, 0, total)
-	for _, sh := range s.shards {
-		out = append(out, sh.Flush()...)
-	}
-	return out
+	return total
 }
 
 // Peek returns a copy of the current contents of all shards without clearing them.
@@ -59,13 +54,36 @@ func (s *ShardedSlice[T]) Peek() []T {
 	return out
 }
 
-// Len returns the combined length of all shards.
-func (s *ShardedSlice[T]) Len() int {
+// All returns an iterator over all items in the slice.
+// The iteration order is not guaranteed to be consistent.
+func (s *ShardedSlice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		items := make([]T, 0, s.Len())
+		for _, sh := range s.shards {
+			items = append(items, sh.Peek()...)
+		}
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// Flush atomically retrieves and clears all shards, concatenating the results into a single slice.
+func (s *ShardedSlice[T]) Flush() []T {
+	// First pass: determine total length
 	total := 0
 	for _, sh := range s.shards {
 		total += sh.Len()
 	}
-	return total
+
+	out := make([]T, 0, total)
+	for _, sh := range s.shards {
+		out = append(out, sh.Flush()...)
+	}
+	return out
 }
 
 // NewShardedSlice creates a ShardedSlice with the given number of shards.

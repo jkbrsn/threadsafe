@@ -7,14 +7,14 @@ import "iter"
 type Slice[T any] interface {
 	// Append appends an item to the buffer in a thread-safe way.
 	Append(item ...T)
-	// Flush atomically retrieves all items and clears the buffer.
-	// Returns a slice with the previous contents.
-	Flush() []T
+	// Len returns the current number of items in the buffer.
+	Len() int
 	// Peek returns a copy of the current buffer contents without clearing.
 	// The returned slice is safe to read but may be stale if new items are added concurrently.
 	Peek() []T
-	// Len returns the current number of items in the buffer.
-	Len() int
+	// Flush atomically retrieves all items and clears the buffer.
+	// Returns a slice with the previous contents.
+	Flush() []T
 
 	// All returns an iterator over all items in the slice in order.
 	//

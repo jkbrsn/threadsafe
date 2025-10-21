@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // MutexSlice is a thread-safe buffer for any type T.
 // It allows concurrent appends and atomic flushes.
@@ -17,14 +20,11 @@ func (b *MutexSlice[T]) Append(item ...T) {
 	b.mu.Unlock()
 }
 
-// Flush atomically retrieves all items and clears the buffer.
-// Returns a slice with the previous contents.
-func (b *MutexSlice[T]) Flush() []T {
+// Len returns the current number of items in the buffer.
+func (b *MutexSlice[T]) Len() int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	flushed := b.data
-	b.data = make([]T, 0, cap(flushed))
-	return flushed
+	return len(b.data)
 }
 
 // Peek returns a copy of the current buffer contents without clearing.
@@ -37,11 +37,33 @@ func (b *MutexSlice[T]) Peek() []T {
 	return copied
 }
 
-// Len returns the current number of items in the buffer.
-func (b *MutexSlice[T]) Len() int {
+// All returns an iterator over all items in the slice.
+// The iteration order is not guaranteed to be consistent.
+func (s *MutexSlice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mu.Lock()
+		items := make([]T, 0, len(s.data))
+		for _, item := range s.data {
+			items = append(items, item)
+		}
+		s.mu.Unlock()
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// Flush atomically retrieves all items and clears the buffer.
+// Returns a slice with the previous contents.
+func (b *MutexSlice[T]) Flush() []T {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return len(b.data)
+	flushed := b.data
+	b.data = make([]T, 0, cap(flushed))
+	return flushed
 }
 
 // MutexSliceFromSlice creates a new MutexSlice from a slice.

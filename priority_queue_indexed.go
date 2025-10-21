@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // IndexedPriorityQueue is a thread-safe binary min-heap implementation parameterized by a Less
 // comparator. It optionally notifies a caller-supplied onSwap callback whenever two indices swap,
@@ -89,6 +92,23 @@ func (h *IndexedPriorityQueue[T]) Range(f func(item T) bool) {
 	for _, it := range snap {
 		if !f(it) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over items in the queue in internal heap order (not sorted).
+// The iteration order is implementation-defined and not guaranteed to be priority-sorted.
+func (q *IndexedPriorityQueue[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		q.mu.RLock()
+		snapshot := make([]T, len(q.items))
+		copy(snapshot, q.items)
+		q.mu.RUnlock()
+
+		for _, item := range snapshot {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }

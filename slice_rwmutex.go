@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // RWMutexSlice is a thread-safe buffer for any type T.
 type RWMutexSlice[T any] struct {
@@ -16,14 +19,11 @@ func (b *RWMutexSlice[T]) Append(item ...T) {
 	b.mu.Unlock()
 }
 
-// Flush atomically retrieves all items and clears the buffer.
-// Returns a slice with the previous contents.
-func (b *RWMutexSlice[T]) Flush() []T {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	flushed := b.data
-	b.data = make([]T, 0, cap(flushed))
-	return flushed
+// Len returns the current number of items in the buffer.
+func (b *RWMutexSlice[T]) Len() int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return len(b.data)
 }
 
 // Peek returns a copy of the current buffer contents without clearing.
@@ -36,11 +36,33 @@ func (b *RWMutexSlice[T]) Peek() []T {
 	return copied
 }
 
-// Len returns the current number of items in the buffer.
-func (b *RWMutexSlice[T]) Len() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return len(b.data)
+// All returns an iterator over all items in the slice.
+// The iteration order is not guaranteed to be consistent.
+func (s *RWMutexSlice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mu.RLock()
+		items := make([]T, 0, len(s.data))
+		for _, item := range s.data {
+			items = append(items, item)
+		}
+		s.mu.RUnlock()
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// Flush atomically retrieves all items and clears the buffer.
+// Returns a slice with the previous contents.
+func (b *RWMutexSlice[T]) Flush() []T {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	flushed := b.data
+	b.data = make([]T, 0, cap(flushed))
+	return flushed
 }
 
 // RWMutexSliceFromSlice creates a new RWMutexSlice from a slice.

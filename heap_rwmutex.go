@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // RWMutexHeap is a thread-safe binary heap implementation protected by a sync.RWMutex.
 // The ordering is determined by the provided less function: less(a, b) == true means
@@ -103,6 +106,23 @@ func (h *RWMutexHeap[T]) Range(f func(item T) bool) {
 	for _, it := range items {
 		if !f(it) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over items in the heap in internal heap order (not sorted).
+// The iteration order is implementation-defined and not guaranteed to be priority-sorted.
+func (h *RWMutexHeap[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		h.mu.RLock()
+		snapshot := make([]T, len(h.data))
+		copy(snapshot, h.data)
+		h.mu.RUnlock()
+
+		for _, item := range snapshot {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }
