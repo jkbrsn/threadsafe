@@ -2,7 +2,7 @@ package threadsafe
 
 import (
 	"math/rand"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 
@@ -58,15 +58,17 @@ func (s *heapTestSuite[T]) TestBasicOperations(t *testing.T) {
 	assert.Equal(t, 0, h.Len())
 
 	// Verify ordering using the same comparator
-	isSorted := func(xs []T) bool {
-		for i := 1; i < len(xs); i++ {
-			if s.less(xs[i], xs[i-1]) { // out of order
-				return false
-			}
+	cmp := func(a, b T) int {
+		switch {
+		case s.less(a, b):
+			return -1
+		case s.less(b, a):
+			return 1
+		default:
+			return 0
 		}
-		return true
 	}
-	assert.True(t, isSorted(popped))
+	assert.True(t, slices.IsSortedFunc(popped, cmp))
 
 	// Pop from empty
 	_, ok = h.Pop()
@@ -207,7 +209,7 @@ func TestHeapPopOrder(t *testing.T) {
 		}
 		out = append(out, v)
 	}
-	assert.True(t, sort.IntsAreSorted(out))
+	assert.True(t, slices.IsSorted(out))
 }
 
 // TestHeapConcurrentPush ensures thread-safety under concurrent pushes.

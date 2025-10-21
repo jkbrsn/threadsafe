@@ -3,6 +3,7 @@ package threadsafe
 
 import (
 	"iter"
+	"slices"
 	"sync"
 )
 
@@ -58,12 +59,7 @@ func (s *SyncMapSet[T]) Clear() {
 
 // Slice returns a copy of the set as a slice.
 func (s *SyncMapSet[T]) Slice() []T {
-	result := make([]T, 0)
-	s.items.Range(func(key, _ any) bool {
-		result = append(result, key.(T))
-		return true
-	})
-	return result
+	return slices.Collect(s.All())
 }
 
 // Range calls f sequentially for each item present in the set.

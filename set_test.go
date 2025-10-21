@@ -1,6 +1,7 @@
 package threadsafe
 
 import (
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -79,10 +80,8 @@ func (s *setTestSuite[T]) TestSlice(t *testing.T) {
 	assert.Equal(t, 2, set.Len())
 
 	// Verify all items are present (order may vary)
-	items := []T{s.item1, s.item2}
-	for _, item := range items {
-		assert.Contains(t, slice, item)
-	}
+	assert.True(t, slices.Contains(slice, s.item1))
+	assert.True(t, slices.Contains(slice, s.item2))
 }
 
 func (s *setTestSuite[T]) TestRange(t *testing.T) {

@@ -3,6 +3,7 @@ package threadsafe
 
 import (
 	"iter"
+	"slices"
 	"sync"
 )
 
@@ -86,14 +87,7 @@ func (h *RWMutexHeap[T]) Clear() {
 
 // Slice returns a copy of the heap contents in internal heap order.
 func (h *RWMutexHeap[T]) Slice() []T {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if len(h.data) == 0 {
-		return nil
-	}
-	cp := make([]T, len(h.data))
-	copy(cp, h.data)
-	return cp
+	return slices.Collect(h.All())
 }
 
 // Range calls f sequentially for each item in internal heap order. This action does not modify

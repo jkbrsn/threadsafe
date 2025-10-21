@@ -1,14 +1,13 @@
 package threadsafe
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 // collectSeq exhausts seq into a slice.
 func collectSeq[T any](seq iter.Seq[T]) []T {
-	var out []T
-	for v := range seq {
-		out = append(out, v)
-	}
-	return out
+	return slices.Collect(seq)
 }
 
 // collectSeq2 exhausts seq into key/value slices.

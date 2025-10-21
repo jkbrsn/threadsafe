@@ -1,6 +1,8 @@
 package threadsafe
 
 import (
+	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -65,10 +67,10 @@ func (s *queueTestSuite[T]) TestSlice(t *testing.T) {
 	// Push items
 	q.Push(s.item1, s.item2)
 	sl := q.Slice()
-	assert.Equal(t, 2, len(sl))
-	// verify order FIFO
-	assert.Equal(t, s.item1, sl[0])
-	assert.Equal(t, s.item2, sl[1])
+	expected := []T{s.item1, s.item2}
+	assert.True(t, slices.EqualFunc(sl, expected, func(a, b T) bool {
+		return reflect.DeepEqual(a, b)
+	}))
 }
 
 func (s *queueTestSuite[T]) TestRange(t *testing.T) {

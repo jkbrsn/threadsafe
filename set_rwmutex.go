@@ -3,6 +3,7 @@ package threadsafe
 
 import (
 	"iter"
+	"slices"
 	"sync"
 )
 
@@ -67,14 +68,7 @@ func (s *RWMutexSet[T]) Clear() {
 
 // Slice returns a copy of the set as a slice.
 func (s *RWMutexSet[T]) Slice() []T {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	result := make([]T, 0, len(s.items))
-	for item := range s.items {
-		result = append(result, item)
-	}
-	return result
+	return slices.Collect(s.All())
 }
 
 // Range calls f sequentially for each item present in the set.
