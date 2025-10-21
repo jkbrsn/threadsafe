@@ -45,10 +45,7 @@ func (s *SyncMap[K, V]) Len() int {
 
 // Clear removes all items from the store.
 func (s *SyncMap[K, V]) Clear() {
-	s.values.Range(func(key, _ any) bool {
-		s.values.Delete(key)
-		return true
-	})
+	s.values.Clear()
 }
 
 // CompareAndSwap executes the compare-and-swap operation for a key.

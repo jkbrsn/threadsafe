@@ -50,10 +50,7 @@ func (s *SyncMapSet[T]) Len() int {
 
 // Clear removes all items from the set.
 func (s *SyncMapSet[T]) Clear() {
-	s.items.Range(func(key, _ any) bool {
-		s.items.Delete(key)
-		return true
-	})
+	s.items.Clear()
 }
 
 // Slice returns a copy of the set as a slice.
