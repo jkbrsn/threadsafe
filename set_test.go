@@ -439,3 +439,115 @@ func BenchmarkSetImplementations(b *testing.B) {
 		})
 	})
 }
+
+func BenchmarkSetIterationPatterns(b *testing.B) {
+	const size = 1024
+	items := make([]string, size)
+	for i := range items {
+		items[i] = "item" + strconv.Itoa(i)
+	}
+
+	run := func(b *testing.B, name string, newSet func() Set[string]) {
+		b.Run(name, func(b *testing.B) {
+			set := newSet()
+			for _, item := range items {
+				set.Add(item)
+			}
+			b.ReportAllocs()
+
+			b.Run("AllForRange", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					for range set.All() {
+						count++
+					}
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			b.Run("RangeCallback", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					set.Range(func(_ string) bool {
+						count++
+						return true
+					})
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			b.Run("CollectManual", func(b *testing.B) {
+				b.ReportAllocs()
+				buf := make([]string, 0, size)
+				for b.Loop() {
+					buf = buf[:0]
+					for item := range set.All() {
+						buf = append(buf, item)
+					}
+					if len(buf) != size {
+						b.Fatalf("unexpected len: %d", len(buf))
+					}
+				}
+			})
+
+			b.Run("CollectSlicesCollect", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					out := slices.Collect(set.All())
+					if len(out) != size {
+						b.Fatalf("unexpected len: %d", len(out))
+					}
+				}
+			})
+		})
+	}
+
+	run(b, "RWMutexSet", func() Set[string] {
+		return NewRWMutexSet[string]()
+	})
+	run(b, "SyncMapSet", func() Set[string] {
+		return NewSyncMapSet[string]()
+	})
+}
+
+func BenchmarkSyncMapSetClear(b *testing.B) {
+	const size = 2048
+	items := make([]string, size)
+	for i := range items {
+		items[i] = "item" + strconv.Itoa(i)
+	}
+
+	clearWithRangeDelete := func(s *SyncMapSet[string]) {
+		s.items.Range(func(key, _ any) bool {
+			s.items.Delete(key)
+			return true
+		})
+	}
+
+	benchmark := func(b *testing.B, name string, clearFn func(*SyncMapSet[string])) {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				set := NewSyncMapSet[string]()
+				for _, item := range items {
+					set.Add(item)
+				}
+				clearFn(set)
+				if set.Len() != 0 {
+					b.Fatalf("set not cleared")
+				}
+			}
+		})
+	}
+
+	benchmark(b, "NativeClear", func(s *SyncMapSet[string]) {
+		s.Clear()
+	})
+	benchmark(b, "RangeDelete", clearWithRangeDelete)
+}

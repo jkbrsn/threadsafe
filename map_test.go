@@ -1,6 +1,8 @@
 package threadsafe
 
 import (
+	"maps"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -586,4 +588,134 @@ func BenchmarkMapImplementations(b *testing.B) {
 			return NewSyncMap[string](func(a, b int) bool { return a == b })
 		})
 	})
+}
+
+func BenchmarkMapIterationPatterns(b *testing.B) {
+	const size = 1024
+	keys := make([]string, size)
+	for i := range keys {
+		keys[i] = strconv.Itoa(i)
+	}
+
+	run := func(b *testing.B, name string, newMap func() Map[string, int]) {
+		b.Run(name, func(b *testing.B) {
+			store := newMap()
+			for i, key := range keys {
+				store.Set(key, i)
+			}
+			b.ReportAllocs()
+
+			b.Run("AllForRange", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					for range store.All() {
+						count++
+					}
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			b.Run("RangeCallback", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					store.Range(func(_ string, _ int) bool {
+						count++
+						return true
+					})
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			type kv struct {
+				k string
+				v int
+			}
+
+			b.Run("CollectManual", func(b *testing.B) {
+				b.ReportAllocs()
+				buf := make([]kv, 0, size)
+				for b.Loop() {
+					buf = buf[:0]
+					for k, v := range store.All() {
+						buf = append(buf, kv{k: k, v: v})
+					}
+					if len(buf) != size {
+						b.Fatalf("unexpected len: %d", len(buf))
+					}
+				}
+			})
+
+			b.Run("CollectMapsCollect", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					out := maps.Collect(store.All())
+					if len(out) != size {
+						b.Fatalf("unexpected len: %d", len(out))
+					}
+				}
+			})
+
+			b.Run("CollectValuesSlice", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					out := slices.Collect(store.Values())
+					if len(out) != size {
+						b.Fatalf("unexpected len: %d", len(out))
+					}
+				}
+			})
+		})
+	}
+
+	run(b, "MutexMap", func() Map[string, int] {
+		return NewMutexMap[string](func(a, b int) bool { return a == b })
+	})
+	run(b, "RWMutexMap", func() Map[string, int] {
+		return NewRWMutexMap[string](func(a, b int) bool { return a == b })
+	})
+	run(b, "SyncMap", func() Map[string, int] {
+		return NewSyncMap[string](func(a, b int) bool { return a == b })
+	})
+}
+
+func BenchmarkSyncMapClear(b *testing.B) {
+	const size = 2048
+	keys := make([]string, size)
+	for i := range keys {
+		keys[i] = strconv.Itoa(i)
+	}
+
+	clearWithRangeDelete := func(s *SyncMap[string, int]) {
+		s.values.Range(func(k, _ any) bool {
+			s.values.Delete(k)
+			return true
+		})
+	}
+
+	benchmark := func(b *testing.B, name string, clearFn func(*SyncMap[string, int])) {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				s := NewSyncMap[string, int](nil)
+				for i, key := range keys {
+					s.Set(key, i)
+				}
+				clearFn(s)
+				if s.Len() != 0 {
+					b.Fatalf("map not cleared")
+				}
+			}
+		})
+	}
+
+	benchmark(b, "NativeClear", func(s *SyncMap[string, int]) {
+		s.Clear()
+	})
+	benchmark(b, "RangeDelete", clearWithRangeDelete)
 }
