@@ -3,6 +3,7 @@ package threadsafe
 
 import (
 	"iter"
+	"maps"
 	"sync"
 )
 
@@ -103,12 +104,7 @@ func (s *SyncMap[K, V]) LoadAndDelete(key K) (V, bool) {
 
 // GetAll returns all key-value pairs in the store.
 func (s *SyncMap[K, V]) GetAll() map[K]V {
-	result := make(map[K]V)
-	s.values.Range(func(key, value any) bool {
-		result[key.(K)] = value.(V) //nolint:revive
-		return true
-	})
-	return result
+	return maps.Collect(s.All())
 }
 
 // GetMany retrieves multiple keys at once.

@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "iter"
+import (
+	"iter"
+	"maps"
+)
 
 // Map is a generic interface for stores with any type V.
 // It allows concurrent appends and atomic flushes.
@@ -91,14 +94,14 @@ func CalculateMapDiff[K comparable, V any](
 	}
 
 	// Check for new or modified entries
-	for k, newVal := range newData {
+	for k, newVal := range maps.All(newData) {
 		if oldVal, exists := oldData[k]; !exists || !equalFunc(oldVal, newVal) {
 			diff.AddedOrModified[k] = newVal
 		}
 	}
 
 	// Check for removed entries
-	for k := range oldData {
+	for k := range maps.Keys(oldData) {
 		if _, exists := newData[k]; !exists {
 			var zero V
 			diff.Removed[k] = zero // or store the old value if needed

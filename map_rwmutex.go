@@ -122,12 +122,16 @@ func (m *RWMutexMap[K, V]) LoadAndDelete(key K) (V, bool) {
 
 // GetAll returns a copy of all key-value pairs in the map.
 func (m *RWMutexMap[K, V]) GetAll() map[K]V {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	return maps.Collect(iter.Seq2[K, V](func(yield func(K, V) bool) {
+		m.mu.RLock()
+		defer m.mu.RUnlock()
 
-	result := make(map[K]V)
-	maps.Copy(result, m.values)
-	return result
+		for k, v := range m.values {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}))
 }
 
 // GetMany retrieves multiple keys at once.
@@ -150,7 +154,7 @@ func (m *RWMutexMap[K, V]) SetMany(entries map[K]V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	maps.Copy(m.values, entries)
+	maps.Insert(m.values, maps.All(entries))
 }
 
 // Equals reports whether the logical content of this map and the other map is the same. Requires
