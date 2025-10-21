@@ -18,6 +18,7 @@ type mapTestSuite[K comparable, V any] struct {
 	val1   V
 	val2   V
 	val3   V
+	equal  func(a, b V) bool
 }
 
 func TestMutexMapImplementsMap(_ *testing.T) {
@@ -191,6 +192,103 @@ func (s *mapTestSuite[K, V]) TestLoadAndDelete(t *testing.T) {
 	assert.Equal(t, 0, store.Len())
 }
 
+func (s *mapTestSuite[K, V]) TestIterators(t *testing.T) {
+	require := assert.New(t)
+
+	store := s.newMap()
+	store.Set(s.key1, s.val1)
+	store.Set(s.key2, s.val2)
+
+	expected := store.GetAll()
+
+	// All yields every key/value pair exactly once for the current snapshot.
+	k, v := collectSeq2(store.All())
+	require.Len(k, len(expected))
+	require.Len(v, len(expected))
+	seen := make(map[K]struct{}, len(expected))
+	for i := range k {
+		val, ok := expected[k[i]]
+		require.True(ok)
+		require.True(s.equal(val, v[i]))
+		seen[k[i]] = struct{}{}
+	}
+	require.Len(seen, len(expected))
+
+	// All respects early termination via yield returning false.
+	var allCalls int
+	store.All()(func(_ K, _ V) bool {
+		allCalls++
+		return false
+	})
+	require.Equal(1, allCalls)
+
+	// Keys iterator matches expected keys and respects early termination.
+	keys := collectSeq(store.Keys())
+	require.Len(keys, len(expected))
+	for _, key := range keys {
+		_, ok := expected[key]
+		require.True(ok)
+	}
+
+	var keyCalls int
+	store.Keys()(func(_ K) bool {
+		keyCalls++
+		return false
+	})
+	require.Equal(1, keyCalls)
+
+	// Values iterator matches expected values and respects early termination.
+	expectedValues := make([]V, 0, len(expected))
+	for _, val := range expected {
+		expectedValues = append(expectedValues, val)
+	}
+	values := collectSeq(store.Values())
+	require.Len(values, len(expectedValues))
+	used := make([]bool, len(expectedValues))
+	for _, got := range values {
+		found := false
+		for i, exp := range expectedValues {
+			if used[i] {
+				continue
+			}
+			if s.equal(exp, got) {
+				used[i] = true
+				found = true
+				break
+			}
+		}
+		require.True(found)
+	}
+
+	var valueCalls int
+	store.Values()(func(_ V) bool {
+		valueCalls++
+		return false
+	})
+	require.Equal(1, valueCalls)
+
+	// Iteration remains safe when mutating during traversal: original keys are still observed.
+	mutating := s.newMap()
+	mutating.Set(s.key1, s.val1)
+	mutating.Set(s.key2, s.val2)
+	before := mutating.GetAll()
+	seenDuringMutation := make(map[K]bool, len(before))
+	mutating.All()(func(key K, value V) bool {
+		if exp, ok := before[key]; ok {
+			require.True(s.equal(exp, value))
+			seenDuringMutation[key] = true
+		}
+		if len(seenDuringMutation) == 1 {
+			mutating.Set(s.key3, s.val3)
+		}
+		return true
+	})
+	for k := range before {
+		require.True(seenDuringMutation[k])
+	}
+	require.Equal(len(before)+1, mutating.Len())
+}
+
 // runMapTestSuite runs all tests in the suite.
 func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
@@ -202,6 +300,9 @@ func runMapTestSuite[K comparable, V any](t *testing.T, s *mapTestSuite[K, V]) {
 	t.Run("Range", s.TestRange)
 	t.Run("LoadOrStore", s.TestLoadOrStore)
 	t.Run("LoadAndDelete", s.TestLoadAndDelete)
+	if s.equal != nil {
+		t.Run("Iterators", s.TestIterators)
+	}
 }
 
 // testStringIntMapImplementations tests all map implementations with string-int types.
@@ -213,6 +314,7 @@ func testStringIntMapImplementations(t *testing.T) {
 			},
 			key1: "one", key2: "two", key3: "three",
 			val1: 1, val2: 2, val3: 3,
+			equal: func(a, b int) bool { return a == b },
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -224,6 +326,7 @@ func testStringIntMapImplementations(t *testing.T) {
 			},
 			key1: "one", key2: "two", key3: "three",
 			val1: 1, val2: 2, val3: 3,
+			equal: func(a, b int) bool { return a == b },
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -235,6 +338,7 @@ func testStringIntMapImplementations(t *testing.T) {
 			},
 			key1: "one", key2: "two", key3: "three",
 			val1: 1, val2: 2, val3: 3,
+			equal: func(a, b int) bool { return a == b },
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -246,6 +350,7 @@ func testStringIntMapImplementations(t *testing.T) {
 			},
 			key1: "one", key2: "two", key3: "three",
 			val1: 1, val2: 2, val3: 3,
+			equal: func(a, b int) bool { return a == b },
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -266,6 +371,7 @@ func testIntStructMapImplementations(t *testing.T) {
 			},
 			key1: 1, key2: 2, key3: 3,
 			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			equal: equalFunc,
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -277,6 +383,7 @@ func testIntStructMapImplementations(t *testing.T) {
 			},
 			key1: 1, key2: 2, key3: 3,
 			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			equal: equalFunc,
 		}
 		runMapTestSuite(t, suite)
 	})
@@ -288,6 +395,7 @@ func testIntStructMapImplementations(t *testing.T) {
 			},
 			key1: 1, key2: 2, key3: 3,
 			val1: testStruct{1, "A"}, val2: testStruct{2, "B"}, val3: testStruct{3, "C"},
+			equal: equalFunc,
 		}
 		runMapTestSuite(t, suite)
 	})

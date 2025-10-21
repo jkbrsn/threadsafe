@@ -105,9 +105,37 @@ func (s *heapTestSuite[T]) TestSliceAndRange(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func (s *heapTestSuite[T]) TestAllIterator(t *testing.T) {
+	h := s.newHeap()
+	h.Push(s.item1, s.item2, s.item3)
+
+	snapshot := h.Slice()
+	items := collectSeq(h.All())
+	assert.ElementsMatch(t, snapshot, items)
+
+	var calls int
+	h.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	var observed []T
+	h.All()(func(item T) bool {
+		observed = append(observed, item)
+		if len(observed) == 1 {
+			h.Push(s.item1)
+		}
+		return true
+	})
+	assert.ElementsMatch(t, snapshot, observed)
+	assert.Equal(t, 4, h.Len())
+}
+
 func runHeapTestSuite[T any](t *testing.T, s *heapTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("SliceAndRange", s.TestSliceAndRange)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 func TestHeapImplementations(t *testing.T) {

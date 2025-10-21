@@ -145,12 +145,46 @@ func (s *setTestSuite[T]) TestSliceImmutability(t *testing.T) {
 	assert.Equal(t, originalLen, len(newSlice))
 }
 
+func (s *setTestSuite[T]) TestAllIterator(t *testing.T) {
+	set := s.newSet()
+	set.Add(s.item1)
+	set.Add(s.item2)
+
+	items := collectSeq(set.All())
+	assert.ElementsMatch(t, []T{s.item1, s.item2}, items)
+
+	var calls int
+	set.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	mutating := s.newSet()
+	mutating.Add(s.item1)
+	mutating.Add(s.item2)
+	seenOriginal := make(map[T]bool)
+	mutating.All()(func(item T) bool {
+		if item == s.item1 || item == s.item2 {
+			seenOriginal[item] = true
+		}
+		if len(seenOriginal) == 1 {
+			mutating.Add(s.item3)
+		}
+		return true
+	})
+	assert.True(t, seenOriginal[s.item1])
+	assert.True(t, seenOriginal[s.item2])
+	assert.True(t, mutating.Has(s.item3))
+}
+
 // runSetTestSuite runs all tests in the suite.
 func runSetTestSuite[T comparable](t *testing.T, s *setTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("Slice", s.TestSlice)
 	t.Run("Range", s.TestRange)
 	t.Run("SliceImmutability", s.TestSliceImmutability)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 // TestSetImplementations is the main test function that sets up and runs the test suites.

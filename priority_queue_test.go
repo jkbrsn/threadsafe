@@ -141,11 +141,44 @@ func (s *priorityQueueTestSuite[T]) TestFixUpdateRemove(t *testing.T) {
 	}
 }
 
+func (s *priorityQueueTestSuite[T]) TestAllIterator(t *testing.T) {
+	pq := s.newPQ()
+	itms := s.items()
+	pq.Push(itms...)
+
+	var snapshot []T
+	pq.Range(func(x T) bool {
+		snapshot = append(snapshot, x)
+		return true
+	})
+	items := collectSeq(pq.All())
+	assert.ElementsMatch(t, snapshot, items)
+
+	var calls int
+	pq.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	var observed []T
+	pq.All()(func(item T) bool {
+		observed = append(observed, item)
+		if len(observed) == 1 {
+			pq.Push(s.items()[0])
+		}
+		return true
+	})
+	assert.ElementsMatch(t, snapshot, observed)
+	assert.Equal(t, len(itms)+1, pq.Len())
+}
+
 // runPriorityQueueTestSuite runs common tests for a PriorityQueue implementation.
 func runPriorityQueueTestSuite[T any](t *testing.T, s *priorityQueueTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("FixUpdateRemove", s.TestFixUpdateRemove)
 	t.Run("ConcurrentOperations", s.TestConcurrentOperations)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 // TestPriorityQueueImplementations runs the test suite for both implementations.
