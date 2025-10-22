@@ -1,50 +1,70 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
-// MutexSlice is a thread-safe buffer for any type T.
-// It allows concurrent appends and atomic flushes.
+// MutexSlice is a thread-safe buffer for any type T, featuring concurrent appends and atomic
+// flushes.
 type MutexSlice[T any] struct {
 	mu   sync.Mutex
 	data []T
 }
 
-// Append appends items to the buffer in a thread-safe way.
-func (b *MutexSlice[T]) Append(item ...T) {
-	b.mu.Lock()
-	b.data = append(b.data, item...)
-	b.mu.Unlock()
+// Append appends items to the slice in a thread-safe way.
+func (s *MutexSlice[T]) Append(item ...T) {
+	s.mu.Lock()
+	s.data = append(s.data, item...)
+	s.mu.Unlock()
 }
 
-// Flush atomically retrieves all items and clears the buffer.
-// Returns a slice with the previous contents.
-func (b *MutexSlice[T]) Flush() []T {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	flushed := b.data
-	b.data = make([]T, 0, cap(flushed))
-	return flushed
+// Len returns the current number of items in the slice.
+func (s *MutexSlice[T]) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.data)
 }
 
-// Peek returns a copy of the current buffer contents without clearing.
+// Peek returns a copy of the current slice contents without clearing.
 // The returned slice is safe to read but may be stale if new items are added concurrently.
-func (b *MutexSlice[T]) Peek() []T {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	copied := make([]T, len(b.data))
-	copy(copied, b.data)
+func (s *MutexSlice[T]) Peek() []T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	copied := make([]T, len(s.data))
+	copy(copied, s.data)
 	return copied
 }
 
-// Len returns the current number of items in the buffer.
-func (b *MutexSlice[T]) Len() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return len(b.data)
+// All returns an iterator over all items in the slice.
+// The iteration order is not guaranteed to be consistent.
+func (s *MutexSlice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mu.Lock()
+		items := make([]T, 0, len(s.data))
+		items = append(items, s.data...)
+		s.mu.Unlock()
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
 }
 
-// MutexSliceFromSlice creates a new MutexSlice from a slice.
+// Flush atomically retrieves all items and clears the slice.
+// Returns a slice with the previous contents.
+func (s *MutexSlice[T]) Flush() []T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	flushed := s.data
+	s.data = make([]T, 0, cap(flushed))
+	return flushed
+}
+
+// MutexSliceFromSlice creates a new MutexSlice from a standard slice.
 func MutexSliceFromSlice[T any](slice []T) *MutexSlice[T] {
 	newSlice := NewMutexSlice[T](len(slice))
 	newSlice.Append(slice...)

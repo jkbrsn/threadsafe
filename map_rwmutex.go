@@ -2,6 +2,7 @@
 package threadsafe
 
 import (
+	"iter"
 	"maps"
 	"sync"
 )
@@ -149,7 +150,7 @@ func (m *RWMutexMap[K, V]) SetMany(entries map[K]V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	maps.Copy(m.values, entries)
+	maps.Insert(m.values, maps.All(entries))
 }
 
 // Equals reports whether the logical content of this map and the other map is the same. Requires
@@ -167,6 +168,60 @@ func (m *RWMutexMap[K, V]) Range(f func(key K, value V) bool) {
 	for k, v := range m.values {
 		if !f(k, v) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over key-value pairs in the map. The iteration order is not guaranteed to
+// be consistent. Note: since this snapshots before iteration, Range is more performant.
+func (m *RWMutexMap[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		m.mu.RLock()
+		snapshot := maps.Clone(m.values)
+		m.mu.RUnlock()
+
+		for k, v := range snapshot {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// Keys returns an iterator over keys in the map. The iteration order is not guaranteed to be
+// consistent. Note: since this snapshots before iteration, Range is more performant.
+func (m *RWMutexMap[K, V]) Keys() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		m.mu.RLock()
+		keys := make([]K, 0, len(m.values))
+		for k := range m.values {
+			keys = append(keys, k)
+		}
+		m.mu.RUnlock()
+
+		for _, k := range keys {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// Values returns an iterator over values in the map. The iteration order is not guaranteed to be
+// consistent. Note: since this snapshots before iteration, Range is more performant.
+func (m *RWMutexMap[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		m.mu.RLock()
+		values := make([]V, 0, len(m.values))
+		for _, v := range m.values {
+			values = append(values, v)
+		}
+		m.mu.RUnlock()
+
+		for _, v := range values {
+			if !yield(v) {
+				return
+			}
 		}
 	}
 }

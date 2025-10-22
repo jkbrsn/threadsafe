@@ -1,46 +1,67 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
-// RWMutexSlice is a thread-safe buffer for any type T.
+// RWMutexSlice is a thread-safe buffer for any type T, featuring concurrent appends and atomic
+// flushes.
 type RWMutexSlice[T any] struct {
 	mu   sync.RWMutex
 	data []T
 }
 
 // Append appends items to the slice.
-func (b *RWMutexSlice[T]) Append(item ...T) {
-	b.mu.Lock()
-	b.data = append(b.data, item...)
-	b.mu.Unlock()
+func (s *RWMutexSlice[T]) Append(item ...T) {
+	s.mu.Lock()
+	s.data = append(s.data, item...)
+	s.mu.Unlock()
 }
 
-// Flush atomically retrieves all items and clears the buffer.
-// Returns a slice with the previous contents.
-func (b *RWMutexSlice[T]) Flush() []T {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	flushed := b.data
-	b.data = make([]T, 0, cap(flushed))
-	return flushed
+// Len returns the current number of items in the slice.
+func (s *RWMutexSlice[T]) Len() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.data)
 }
 
-// Peek returns a copy of the current buffer contents without clearing.
+// Peek returns a copy of the current slice contents without clearing.
 // The returned slice is safe to read but may be stale if new items are added concurrently.
-func (b *RWMutexSlice[T]) Peek() []T {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	copied := make([]T, len(b.data))
-	copy(copied, b.data)
+func (s *RWMutexSlice[T]) Peek() []T {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	copied := make([]T, len(s.data))
+	copy(copied, s.data)
 	return copied
 }
 
-// Len returns the current number of items in the buffer.
-func (b *RWMutexSlice[T]) Len() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return len(b.data)
+// All returns an iterator over all items in the slice.
+// The iteration order is not guaranteed to be consistent.
+func (s *RWMutexSlice[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mu.RLock()
+		items := make([]T, 0, len(s.data))
+		items = append(items, s.data...)
+		s.mu.RUnlock()
+
+		for _, item := range items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// Flush atomically retrieves all items and clears the slice.
+// Returns a slice with the previous contents.
+func (s *RWMutexSlice[T]) Flush() []T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	flushed := s.data
+	s.data = make([]T, 0, cap(flushed))
+	return flushed
 }
 
 // RWMutexSliceFromSlice creates a new RWMutexSlice from a slice.

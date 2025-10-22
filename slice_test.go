@@ -77,11 +77,38 @@ func (s *sliceTestSuite[T]) TestConcurrentAppend(t *testing.T) {
 	assert.Equal(t, numGoroutines*perGoroutine, len(slice.Flush()))
 }
 
+func (s *sliceTestSuite[T]) TestAllIterator(t *testing.T) {
+	slice := s.newSlice()
+	slice.Append(s.item1, s.item2)
+
+	items := collectSeq(slice.All())
+	assert.Equal(t, []T{s.item1, s.item2}, items)
+
+	var calls int
+	slice.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	var observed []T
+	slice.All()(func(item T) bool {
+		observed = append(observed, item)
+		if len(observed) == 1 {
+			slice.Append(s.item3)
+		}
+		return true
+	})
+	assert.Equal(t, []T{s.item1, s.item2}, observed)
+	assert.Equal(t, 3, slice.Len())
+}
+
 // runSliceTestSuite runs all tests in the suite.
 func runSliceTestSuite[T comparable](t *testing.T, s *sliceTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("PeekDoesNotMutate", s.TestPeekDoesNotMutate)
 	t.Run("ConcurrentAppend", s.TestConcurrentAppend)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 func intTestSuite(newSlice func() Slice[int]) *sliceTestSuite[int] {

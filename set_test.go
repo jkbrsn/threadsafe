@@ -1,6 +1,7 @@
 package threadsafe
 
 import (
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -79,10 +80,8 @@ func (s *setTestSuite[T]) TestSlice(t *testing.T) {
 	assert.Equal(t, 2, set.Len())
 
 	// Verify all items are present (order may vary)
-	items := []T{s.item1, s.item2}
-	for _, item := range items {
-		assert.Contains(t, slice, item)
-	}
+	assert.True(t, slices.Contains(slice, s.item1))
+	assert.True(t, slices.Contains(slice, s.item2))
 }
 
 func (s *setTestSuite[T]) TestRange(t *testing.T) {
@@ -145,12 +144,46 @@ func (s *setTestSuite[T]) TestSliceImmutability(t *testing.T) {
 	assert.Equal(t, originalLen, len(newSlice))
 }
 
+func (s *setTestSuite[T]) TestAllIterator(t *testing.T) {
+	set := s.newSet()
+	set.Add(s.item1)
+	set.Add(s.item2)
+
+	items := collectSeq(set.All())
+	assert.ElementsMatch(t, []T{s.item1, s.item2}, items)
+
+	var calls int
+	set.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	mutating := s.newSet()
+	mutating.Add(s.item1)
+	mutating.Add(s.item2)
+	seenOriginal := make(map[T]bool)
+	mutating.All()(func(item T) bool {
+		if item == s.item1 || item == s.item2 {
+			seenOriginal[item] = true
+		}
+		if len(seenOriginal) == 1 {
+			mutating.Add(s.item3)
+		}
+		return true
+	})
+	assert.True(t, seenOriginal[s.item1])
+	assert.True(t, seenOriginal[s.item2])
+	assert.True(t, mutating.Has(s.item3))
+}
+
 // runSetTestSuite runs all tests in the suite.
 func runSetTestSuite[T comparable](t *testing.T, s *setTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("Slice", s.TestSlice)
 	t.Run("Range", s.TestRange)
 	t.Run("SliceImmutability", s.TestSliceImmutability)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 // TestSetImplementations is the main test function that sets up and runs the test suites.
@@ -317,26 +350,22 @@ func TestSetConcurrentRemoval(t *testing.T) {
 			const numItems = 1000
 
 			// Pre-populate the set
-			for i := 0; i < numItems; i++ {
+			for i := range numItems {
 				set.Add("item" + strconv.Itoa(i))
 			}
 
-			var wg sync.WaitGroup
-
 			// Concurrent removals
-			for i := 0; i < numItems; i++ {
-				wg.Add(1)
-				go func(index int) {
-					defer wg.Done()
-					set.Delete("item" + strconv.Itoa(index))
-				}(i)
+			var wg sync.WaitGroup
+			for i := range numItems {
+				wg.Go(func() {
+					set.Delete("item" + strconv.Itoa(i))
+				})
 			}
-
 			wg.Wait()
 
 			// Verify set is empty
 			assert.Equal(t, 0, set.Len())
-			for i := 0; i < numItems; i++ {
+			for i := range numItems {
 				assert.False(t, set.Has("item"+strconv.Itoa(i)))
 			}
 		})
@@ -405,4 +434,116 @@ func BenchmarkSetImplementations(b *testing.B) {
 			return NewSyncMapSet[string]()
 		})
 	})
+}
+
+func BenchmarkSetIterationPatterns(b *testing.B) {
+	const size = 1024
+	items := make([]string, size)
+	for i := range items {
+		items[i] = "item" + strconv.Itoa(i)
+	}
+
+	run := func(b *testing.B, name string, newSet func() Set[string]) {
+		b.Run(name, func(b *testing.B) {
+			set := newSet()
+			for _, item := range items {
+				set.Add(item)
+			}
+			b.ReportAllocs()
+
+			b.Run("AllForRange", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					for range set.All() {
+						count++
+					}
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			b.Run("RangeCallback", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					count := 0
+					set.Range(func(_ string) bool {
+						count++
+						return true
+					})
+					if count != size {
+						b.Fatalf("unexpected count: %d", count)
+					}
+				}
+			})
+
+			b.Run("CollectManual", func(b *testing.B) {
+				b.ReportAllocs()
+				buf := make([]string, 0, size)
+				for b.Loop() {
+					buf = buf[:0]
+					for item := range set.All() {
+						buf = append(buf, item)
+					}
+					if len(buf) != size {
+						b.Fatalf("unexpected len: %d", len(buf))
+					}
+				}
+			})
+
+			b.Run("CollectSlicesCollect", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					out := slices.Collect(set.All())
+					if len(out) != size {
+						b.Fatalf("unexpected len: %d", len(out))
+					}
+				}
+			})
+		})
+	}
+
+	run(b, "RWMutexSet", func() Set[string] {
+		return NewRWMutexSet[string]()
+	})
+	run(b, "SyncMapSet", func() Set[string] {
+		return NewSyncMapSet[string]()
+	})
+}
+
+func BenchmarkSyncMapSetClear(b *testing.B) {
+	const size = 2048
+	items := make([]string, size)
+	for i := range items {
+		items[i] = "item" + strconv.Itoa(i)
+	}
+
+	clearWithRangeDelete := func(s *SyncMapSet[string]) {
+		s.items.Range(func(key, _ any) bool {
+			s.items.Delete(key)
+			return true
+		})
+	}
+
+	benchmark := func(b *testing.B, name string, clearFn func(*SyncMapSet[string])) {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				set := NewSyncMapSet[string]()
+				for _, item := range items {
+					set.Add(item)
+				}
+				clearFn(set)
+				if set.Len() != 0 {
+					b.Fatal("set not cleared")
+				}
+			}
+		})
+	}
+
+	benchmark(b, "NativeClear", func(s *SyncMapSet[string]) {
+		s.Clear()
+	})
+	benchmark(b, "RangeDelete", clearWithRangeDelete)
 }

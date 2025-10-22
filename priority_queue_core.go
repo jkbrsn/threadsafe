@@ -1,7 +1,10 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 // CorePriorityQueue is a thread-safe priority queue that implements the core PriorityQueue
 // interface. It does not expose any indexed mutation helpers, nor onSwap callbacks.
@@ -82,6 +85,23 @@ func (q *CorePriorityQueue[T]) Range(f func(item T) bool) {
 	for _, it := range snap {
 		if !f(it) {
 			break
+		}
+	}
+}
+
+// All returns an iterator over items in the queue in internal heap order (not sorted).
+// The iteration order is implementation-defined and not guaranteed to be priority-sorted.
+func (q *CorePriorityQueue[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		q.mu.RLock()
+		snapshot := make([]T, len(q.items))
+		copy(snapshot, q.items)
+		q.mu.RUnlock()
+
+		for _, item := range snapshot {
+			if !yield(item) {
+				return
+			}
 		}
 	}
 }

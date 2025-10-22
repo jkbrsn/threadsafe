@@ -1,7 +1,11 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
-import "sync"
+import (
+	"iter"
+	"slices"
+	"sync"
+)
 
 // SyncMapSet is a thread-safe Set implementation backed by sync.Map.
 // Internally it stores the items as keys in the sync.Map with an empty struct{} value.
@@ -50,20 +54,12 @@ func (s *SyncMapSet[T]) Len() int {
 
 // Clear removes all items from the set.
 func (s *SyncMapSet[T]) Clear() {
-	s.items.Range(func(key, _ any) bool {
-		s.items.Delete(key)
-		return true
-	})
+	s.items.Clear()
 }
 
 // Slice returns a copy of the set as a slice.
 func (s *SyncMapSet[T]) Slice() []T {
-	result := make([]T, 0)
-	s.items.Range(func(key, _ any) bool {
-		result = append(result, key.(T))
-		return true
-	})
-	return result
+	return slices.Collect(s.All())
 }
 
 // Range calls f sequentially for each item present in the set.
@@ -72,4 +68,14 @@ func (s *SyncMapSet[T]) Range(f func(item T) bool) {
 	s.items.Range(func(key, _ any) bool {
 		return f(key.(T))
 	})
+}
+
+// All returns an iterator over all items in the set.
+// The iteration order is not guaranteed to be consistent.
+func (s *SyncMapSet[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.items.Range(func(key, _ any) bool {
+			return yield(key.(T)) //nolint:revive
+		})
+	}
 }

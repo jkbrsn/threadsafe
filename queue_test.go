@@ -1,6 +1,8 @@
 package threadsafe
 
 import (
+	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -63,12 +65,12 @@ func (s *queueTestSuite[T]) TestSlice(t *testing.T) {
 	assert.Empty(t, q.Slice())
 
 	// Push items
-	q.Push(s.item1, s.item2)
+	q.Push(s.item1, s.item2, s.item3)
 	sl := q.Slice()
-	assert.Equal(t, 2, len(sl))
-	// verify order FIFO
-	assert.Equal(t, s.item1, sl[0])
-	assert.Equal(t, s.item2, sl[1])
+	expected := []T{s.item1, s.item2, s.item3}
+	assert.True(t, slices.EqualFunc(sl, expected, func(a, b T) bool {
+		return reflect.DeepEqual(a, b)
+	}))
 }
 
 func (s *queueTestSuite[T]) TestRange(t *testing.T) {
@@ -95,10 +97,37 @@ func (s *queueTestSuite[T]) TestRange(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func (s *queueTestSuite[T]) TestAllIterator(t *testing.T) {
+	q := s.newQueue()
+	q.Push(s.item1, s.item2, s.item3)
+
+	items := collectSeq(q.All())
+	assert.Equal(t, []T{s.item1, s.item2, s.item3}, items)
+
+	var calls int
+	q.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	var observed []T
+	q.All()(func(item T) bool {
+		observed = append(observed, item)
+		if len(observed) == 1 {
+			q.Push(s.item1)
+		}
+		return true
+	})
+	assert.Equal(t, []T{s.item1, s.item2, s.item3}, observed)
+	assert.Equal(t, 4, q.Len())
+}
+
 func runQueueTestSuite[T any](t *testing.T, s *queueTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("Slice", s.TestSlice)
 	t.Run("Range", s.TestRange)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 func TestQueueImplementations(t *testing.T) {

@@ -1,6 +1,11 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import (
+	"iter"
+	"maps"
+)
+
 // Map is a generic interface for stores with any type V.
 // It allows concurrent appends and atomic flushes.
 type Map[K comparable, V any] interface {
@@ -39,6 +44,19 @@ type Map[K comparable, V any] interface {
 	// Range calls f sequentially for each key and value present in the map.
 	// If f returns false, range stops the iteration.
 	Range(f func(key K, value V) bool)
+
+	// All returns an iterator over key-value pairs in the map.
+	// The iteration order is not guaranteed to be consistent.
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
+	All() iter.Seq2[K, V]
+	// Keys returns an iterator over keys in the map.
+	// The iteration order is not guaranteed to be consistent.
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
+	Keys() iter.Seq[K]
+	// Values returns an iterator over values in the map.
+	// The iteration order is not guaranteed to be consistent.
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
+	Values() iter.Seq[V]
 }
 
 // MapDiff represents the difference between two maps.
@@ -59,14 +77,14 @@ func CalculateMapDiff[K comparable, V any](
 	}
 
 	// Check for new or modified entries
-	for k, newVal := range newData {
+	for k, newVal := range maps.All(newData) {
 		if oldVal, exists := oldData[k]; !exists || !equalFunc(oldVal, newVal) {
 			diff.AddedOrModified[k] = newVal
 		}
 	}
 
 	// Check for removed entries
-	for k := range oldData {
+	for k := range maps.Keys(oldData) {
 		if _, exists := newData[k]; !exists {
 			var zero V
 			diff.Removed[k] = zero // or store the old value if needed

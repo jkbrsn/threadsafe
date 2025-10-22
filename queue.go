@@ -1,6 +1,8 @@
 // Package threadsafe implements thread-safe operations.
 package threadsafe
 
+import "iter"
+
 // Queue is a generic FIFO queue interface for any type T.
 // All operations must be safe for concurrent use by multiple goroutines.
 //
@@ -32,4 +34,14 @@ type Queue[T any] interface {
 	// Range calls f sequentially for each item present in the queue from front
 	// to back. If f returns false, Range stops the iteration early.
 	Range(f func(item T) bool)
+
+	// All returns an iterator over items in the queue from front to back.
+	// The iteration order matches the queue order (FIFO).
+	//
+	// Example usage:
+	//
+	//	for item := range myQueue.All() {
+	//	    fmt.Println(item)
+	//	}
+	All() iter.Seq[T]
 }

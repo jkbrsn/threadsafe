@@ -2,7 +2,7 @@ package threadsafe
 
 import (
 	"math/rand"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 
@@ -58,15 +58,17 @@ func (s *heapTestSuite[T]) TestBasicOperations(t *testing.T) {
 	assert.Equal(t, 0, h.Len())
 
 	// Verify ordering using the same comparator
-	isSorted := func(xs []T) bool {
-		for i := 1; i < len(xs); i++ {
-			if s.less(xs[i], xs[i-1]) { // out of order
-				return false
-			}
+	cmp := func(a, b T) int {
+		switch {
+		case s.less(a, b):
+			return -1
+		case s.less(b, a):
+			return 1
+		default:
+			return 0
 		}
-		return true
 	}
-	assert.True(t, isSorted(popped))
+	assert.True(t, slices.IsSortedFunc(popped, cmp))
 
 	// Pop from empty
 	_, ok = h.Pop()
@@ -105,9 +107,37 @@ func (s *heapTestSuite[T]) TestSliceAndRange(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func (s *heapTestSuite[T]) TestAllIterator(t *testing.T) {
+	h := s.newHeap()
+	h.Push(s.item1, s.item2, s.item3)
+
+	snapshot := h.Slice()
+	items := collectSeq(h.All())
+	assert.ElementsMatch(t, snapshot, items)
+
+	var calls int
+	h.All()(func(_ T) bool {
+		calls++
+		return false
+	})
+	assert.Equal(t, 1, calls)
+
+	var observed []T
+	h.All()(func(item T) bool {
+		observed = append(observed, item)
+		if len(observed) == 1 {
+			h.Push(s.item1)
+		}
+		return true
+	})
+	assert.ElementsMatch(t, snapshot, observed)
+	assert.Equal(t, 4, h.Len())
+}
+
 func runHeapTestSuite[T any](t *testing.T, s *heapTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("SliceAndRange", s.TestSliceAndRange)
+	t.Run("AllIterator", s.TestAllIterator)
 }
 
 func TestHeapImplementations(t *testing.T) {
@@ -179,7 +209,7 @@ func TestHeapPopOrder(t *testing.T) {
 		}
 		out = append(out, v)
 	}
-	assert.True(t, sort.IntsAreSorted(out))
+	assert.True(t, slices.IsSorted(out))
 }
 
 // TestHeapConcurrentPush ensures thread-safety under concurrent pushes.
