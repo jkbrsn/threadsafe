@@ -38,14 +38,18 @@ linters:
           disabled: false
           exclude: [""]
           arguments: [100]
+        - name: function-length
+          disabled: false
+          exclude: ["TEST"]
+          arguments: [0, 80]
         - name: cognitive-complexity
           disabled: false
-          exclude: [""]
+          exclude: ["TEST"]
           arguments: [21]
         - name: cyclomatic
           disabled: false
-          exclude: [""]
-          arguments: [15]
+          exclude: ["TEST"]
+          arguments: [21]
         - name: confusing-naming
           disabled: true
 
