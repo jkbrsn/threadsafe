@@ -172,8 +172,8 @@ func (m *RWMutexMap[K, V]) Range(f func(key K, value V) bool) {
 	}
 }
 
-// All returns an iterator over key-value pairs in the map.
-// The iteration order is not guaranteed to be consistent.
+// All returns an iterator over key-value pairs in the map. The iteration order is not guaranteed to
+// be consistent. Note: since this snapshots before iteration, Range is more performant.
 func (m *RWMutexMap[K, V]) All() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		m.mu.RLock()
@@ -188,8 +188,8 @@ func (m *RWMutexMap[K, V]) All() iter.Seq2[K, V] {
 	}
 }
 
-// Keys returns an iterator over keys in the map.
-// The iteration order is not guaranteed to be consistent.
+// Keys returns an iterator over keys in the map. The iteration order is not guaranteed to be
+// consistent. Note: since this snapshots before iteration, Range is more performant.
 func (m *RWMutexMap[K, V]) Keys() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		m.mu.RLock()
@@ -207,8 +207,8 @@ func (m *RWMutexMap[K, V]) Keys() iter.Seq[K] {
 	}
 }
 
-// Values returns an iterator over values in the map.
-// The iteration order is not guaranteed to be consistent.
+// Values returns an iterator over values in the map. The iteration order is not guaranteed to be
+// consistent. Note: since this snapshots before iteration, Range is more performant.
 func (m *RWMutexMap[K, V]) Values() iter.Seq[V] {
 	return func(yield func(V) bool) {
 		m.mu.RLock()

@@ -23,11 +23,6 @@ type Set[T comparable] interface {
 
 	// All returns an iterator over all items in the set.
 	// The iteration order is not guaranteed to be consistent.
-	//
-	// Example usage:
-	//
-	//	for item := range mySet.All() {
-	//	    fmt.Println(item)
-	//	}
+	// Note: for mutex backed sets this snapshots before iteration, making Range more performant.
 	All() iter.Seq[T]
 }

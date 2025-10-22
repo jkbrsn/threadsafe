@@ -47,32 +47,15 @@ type Map[K comparable, V any] interface {
 
 	// All returns an iterator over key-value pairs in the map.
 	// The iteration order is not guaranteed to be consistent.
-	//
-	// Example usage:
-	//
-	//	for k, v := range myMap.All() {
-	//	    fmt.Println(k, v)
-	//	}
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
 	All() iter.Seq2[K, V]
-
 	// Keys returns an iterator over keys in the map.
 	// The iteration order is not guaranteed to be consistent.
-	//
-	// Example usage:
-	//
-	//	for k := range myMap.Keys() {
-	//	    fmt.Println(k)
-	//	}
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
 	Keys() iter.Seq[K]
-
 	// Values returns an iterator over values in the map.
 	// The iteration order is not guaranteed to be consistent.
-	//
-	// Example usage:
-	//
-	//	for v := range myMap.Values() {
-	//	    fmt.Println(v)
-	//	}
+	// Note: for mutex backed maps this snapshots before iteration, making Range more performant.
 	Values() iter.Seq[V]
 }
 

@@ -14,6 +14,7 @@ All interface implementations in this package are thread-safe and can be used co
 
 - Generic, thread-safe maps, sets, queues, heaps, and priority queues.
 - Iterator-first APIs for idiomatic `range` loops.
+  - Note: due to the snapshotting used to keep the iterators thread-safe, some iterators may be less performant than a standard Range iteration.
 - Multiple concurrency strategies (mutex, RWMutex, sync.Map) so you can pick the right trade-offs.
 
 ## Tests and benchmarks
