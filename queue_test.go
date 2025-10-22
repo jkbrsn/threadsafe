@@ -65,9 +65,9 @@ func (s *queueTestSuite[T]) TestSlice(t *testing.T) {
 	assert.Empty(t, q.Slice())
 
 	// Push items
-	q.Push(s.item1, s.item2)
+	q.Push(s.item1, s.item2, s.item3)
 	sl := q.Slice()
-	expected := []T{s.item1, s.item2}
+	expected := []T{s.item1, s.item2, s.item3}
 	assert.True(t, slices.EqualFunc(sl, expected, func(a, b T) bool {
 		return reflect.DeepEqual(a, b)
 	}))

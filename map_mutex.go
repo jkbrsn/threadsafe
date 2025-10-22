@@ -122,16 +122,12 @@ func (m *MutexMap[K, V]) LoadAndDelete(key K) (V, bool) {
 
 // GetAll returns a copy of all key-value pairs in the map.
 func (m *MutexMap[K, V]) GetAll() map[K]V {
-	return maps.Collect(iter.Seq2[K, V](func(yield func(K, V) bool) {
-		m.mu.Lock()
-		defer m.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-		for k, v := range m.values {
-			if !yield(k, v) {
-				return
-			}
-		}
-	}))
+	result := make(map[K]V)
+	maps.Copy(result, m.values)
+	return result
 }
 
 // GetMany retrieves multiple keys at once.
