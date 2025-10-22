@@ -350,26 +350,22 @@ func TestSetConcurrentRemoval(t *testing.T) {
 			const numItems = 1000
 
 			// Pre-populate the set
-			for i := 0; i < numItems; i++ {
+			for i := range numItems {
 				set.Add("item" + strconv.Itoa(i))
 			}
 
-			var wg sync.WaitGroup
-
 			// Concurrent removals
-			for i := 0; i < numItems; i++ {
-				wg.Add(1)
-				go func(index int) {
-					defer wg.Done()
-					set.Delete("item" + strconv.Itoa(index))
-				}(i)
+			var wg sync.WaitGroup
+			for i := range numItems {
+				wg.Go(func() {
+					set.Delete("item" + strconv.Itoa(i))
+				})
 			}
-
 			wg.Wait()
 
 			// Verify set is empty
 			assert.Equal(t, 0, set.Len())
-			for i := 0; i < numItems; i++ {
+			for i := range numItems {
 				assert.False(t, set.Has("item"+strconv.Itoa(i)))
 			}
 		})
@@ -540,7 +536,7 @@ func BenchmarkSyncMapSetClear(b *testing.B) {
 				}
 				clearFn(set)
 				if set.Len() != 0 {
-					b.Fatalf("set not cleared")
+					b.Fatal("set not cleared")
 				}
 			}
 		})

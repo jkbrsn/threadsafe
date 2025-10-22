@@ -708,7 +708,7 @@ func BenchmarkSyncMapClear(b *testing.B) {
 				}
 				clearFn(s)
 				if s.Len() != 0 {
-					b.Fatalf("map not cleared")
+					b.Fatal("map not cleared")
 				}
 			}
 		})
