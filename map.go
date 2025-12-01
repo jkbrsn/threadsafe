@@ -13,7 +13,7 @@ type Map[K comparable, V any] interface {
 	Get(key K) (value V, loaded bool)
 	// Set stores a value for the given key.
 	Set(key K, value V)
-	// Delete removes the key from the map.
+	// Delete removes the key from the map. If the key doesn't exist, Delete is a no-op.
 	Delete(key K)
 	// Len returns the number of items in the map.
 	Len() int

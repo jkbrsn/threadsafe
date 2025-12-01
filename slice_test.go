@@ -219,6 +219,77 @@ func TestSliceImplementations(t *testing.T) {
 	})
 }
 
+func TestSliceZeroValue(t *testing.T) {
+	t.Run("RWMutexSlice", func(t *testing.T) {
+		// RWMutexSlice should be zero-value safe (slice-backed)
+		var s RWMutexSlice[int]
+
+		// Append on zero-value
+		s.Append(1, 2, 3)
+		assert.Equal(t, 3, s.Len())
+
+		// Peek should work
+		items := s.Peek()
+		assert.Equal(t, []int{1, 2, 3}, items)
+
+		// Flush should work
+		flushed := s.Flush()
+		assert.Equal(t, []int{1, 2, 3}, flushed)
+		assert.Equal(t, 0, s.Len())
+
+		// Read operations on zero-value
+		var s2 RWMutexSlice[string]
+		assert.Equal(t, 0, s2.Len())
+		assert.Empty(t, s2.Peek())
+	})
+
+	t.Run("MutexSlice", func(t *testing.T) {
+		// MutexSlice should be zero-value safe (slice-backed)
+		var s MutexSlice[int]
+
+		// Append on zero-value
+		s.Append(1, 2, 3)
+		assert.Equal(t, 3, s.Len())
+
+		// Peek should work
+		items := s.Peek()
+		assert.Equal(t, []int{1, 2, 3}, items)
+
+		// Flush should work
+		flushed := s.Flush()
+		assert.Equal(t, []int{1, 2, 3}, flushed)
+		assert.Equal(t, 0, s.Len())
+
+		// Read operations on zero-value
+		var s2 MutexSlice[string]
+		assert.Equal(t, 0, s2.Len())
+		assert.Empty(t, s2.Peek())
+	})
+
+	t.Run("ShardedSlice", func(t *testing.T) {
+		// ShardedSlice is zero-value safe (defaults to single shard)
+		var s ShardedSlice[int]
+
+		// Append on zero-value (will default to 1 shard)
+		s.Append(1, 2, 3)
+		assert.Equal(t, 3, s.Len())
+
+		// Peek should work
+		items := s.Peek()
+		assert.Equal(t, []int{1, 2, 3}, items)
+
+		// Flush should work
+		flushed := s.Flush()
+		assert.Equal(t, []int{1, 2, 3}, flushed)
+		assert.Equal(t, 0, s.Len())
+
+		// Read operations on zero-value
+		var s2 ShardedSlice[string]
+		assert.Equal(t, 0, s2.Len())
+		assert.Empty(t, s2.Peek())
+	})
+}
+
 //
 // BENCHMARKS
 //

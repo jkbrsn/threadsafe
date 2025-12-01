@@ -100,10 +100,11 @@ func (q *RWMutexQueue[T]) Slice() []T {
 // the queue or its items.
 func (q *RWMutexQueue[T]) Range(f func(item T) bool) {
 	q.mu.RLock()
-	items := q.items[q.head:]
+	snapshot := make([]T, len(q.items)-q.head)
+	copy(snapshot, q.items[q.head:])
 	q.mu.RUnlock()
 
-	for _, it := range items {
+	for _, it := range snapshot {
 		if !f(it) {
 			break
 		}

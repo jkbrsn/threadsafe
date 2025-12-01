@@ -7,7 +7,8 @@ import "iter"
 type Set[T comparable] interface {
 	// Add stores an item in the set.
 	Add(item T) (added bool)
-	// Delete removes an item from the set.
+	// Delete removes an item from the set. Returns true if the item was present and removed,
+	// false if it was not in the set. If the item doesn't exist, Delete is a no-op.
 	Delete(item T) (removed bool)
 	// Has returns true if the item is in the set, otherwise false.
 	Has(item T) bool

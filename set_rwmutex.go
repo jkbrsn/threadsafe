@@ -18,6 +18,10 @@ func (s *RWMutexSet[T]) Add(item T) (added bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.items == nil {
+		s.items = make(map[T]struct{})
+	}
+
 	if _, exists := s.items[item]; !exists {
 		s.items[item] = struct{}{}
 		s.size++
@@ -30,6 +34,10 @@ func (s *RWMutexSet[T]) Add(item T) (added bool) {
 func (s *RWMutexSet[T]) Delete(item T) (removed bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.items == nil {
+		return false
+	}
 
 	if _, exists := s.items[item]; exists {
 		delete(s.items, item)

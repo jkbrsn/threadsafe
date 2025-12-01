@@ -372,6 +372,51 @@ func TestSetConcurrentRemoval(t *testing.T) {
 	}
 }
 
+func TestRWMutexSetZeroValue(t *testing.T) {
+	// Test that RWMutexSet can be used at zero value without initialization
+	var s RWMutexSet[int]
+
+	// Add on zero-value should initialize map
+	assert.True(t, s.Add(1))
+	assert.True(t, s.Add(2))
+	assert.Equal(t, 2, s.Len())
+
+	// Verify items exist
+	assert.True(t, s.Has(1))
+	assert.True(t, s.Has(2))
+	assert.False(t, s.Has(3))
+
+	// Delete existing item
+	assert.True(t, s.Delete(1))
+	assert.Equal(t, 1, s.Len())
+	assert.False(t, s.Has(1))
+
+	// Delete non-existent item
+	assert.False(t, s.Delete(99))
+
+	// Test zero-value with Delete before Add
+	var s2 RWMutexSet[string]
+	assert.False(t, s2.Delete("nonexistent"))
+	assert.Equal(t, 0, s2.Len())
+
+	// Then Add should still work
+	assert.True(t, s2.Add("test"))
+	assert.Equal(t, 1, s2.Len())
+
+	// Test read operations on zero-value
+	var s3 RWMutexSet[string]
+	assert.False(t, s3.Has("anything"))
+	assert.Equal(t, 0, s3.Len())
+	assert.Empty(t, s3.Slice())
+
+	visited := 0
+	s3.Range(func(string) bool {
+		visited++
+		return true
+	})
+	assert.Equal(t, 0, visited)
+}
+
 //
 // BENCHMARKS
 //

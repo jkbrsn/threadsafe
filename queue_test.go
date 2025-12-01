@@ -123,10 +123,32 @@ func (s *queueTestSuite[T]) TestAllIterator(t *testing.T) {
 	assert.Equal(t, 4, q.Len())
 }
 
+func (s *queueTestSuite[T]) TestRangeSnapshot(t *testing.T) {
+	q := s.newQueue()
+	q.Push(s.item1, s.item2, s.item3)
+
+	// Range should provide a snapshot - mutations during iteration shouldn't affect what we see
+	var observed []T
+	q.Range(func(item T) bool {
+		observed = append(observed, item)
+		// Mutate the queue during iteration
+		if len(observed) == 1 {
+			q.Push(s.item1) // Add a duplicate
+		}
+		return true
+	})
+
+	// Should only observe the original 3 items (snapshot behavior)
+	assert.Equal(t, []T{s.item1, s.item2, s.item3}, observed)
+	// But the queue should now have 4 items
+	assert.Equal(t, 4, q.Len())
+}
+
 func runQueueTestSuite[T any](t *testing.T, s *queueTestSuite[T]) {
 	t.Run("BasicOperations", s.TestBasicOperations)
 	t.Run("Slice", s.TestSlice)
 	t.Run("Range", s.TestRange)
+	t.Run("RangeSnapshot", s.TestRangeSnapshot)
 	t.Run("AllIterator", s.TestAllIterator)
 }
 
@@ -180,10 +202,10 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 
 	// Concurrent enqueues
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < perGoroutine; j++ {
+			for j := range perGoroutine {
 				q.Push(strconv.Itoa(id*perGoroutine + j))
 			}
 		}(i)
@@ -194,7 +216,7 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 
 	// Now dequeue everything sequentially
 	total := goroutines * perGoroutine
-	for i := 0; i < total; i++ {
+	for range total {
 		item, ok := q.Pop()
 		assert.True(t, ok)
 		_ = item // value not important for this test
@@ -207,4 +229,77 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 func TestQueueConcurrentAccess(t *testing.T) {
 	q := NewRWMutexQueue[string]()
 	testConcurrentQueueAccess(t, q)
+}
+
+func TestQueueConcurrentRange(t *testing.T) {
+	q := NewRWMutexQueue[int]()
+
+	// Pre-populate the queue
+	for i := range 100 {
+		q.Push(i)
+	}
+
+	var wg sync.WaitGroup
+	// Goroutine 1: Concurrent Range calls
+	wg.Go(func() {
+		for range 20 {
+			count := 0
+			q.Range(func(int) bool {
+				count++
+				return true
+			})
+			// Verify we got some items (exact count may vary due to concurrent mutations)
+			assert.Greater(t, count, 0)
+		}
+	})
+
+	// Goroutine 2: Concurrent Push operations
+	wg.Go(func() {
+		for i := range 100 {
+			q.Push(i + 1000)
+		}
+	})
+
+	// Goroutine 3: Concurrent Pop operations
+	wg.Go(func() {
+		for range 50 {
+			q.Pop()
+		}
+	})
+
+	wg.Wait()
+	// Test should complete without data races
+}
+
+func TestRWMutexQueueZeroValue(t *testing.T) {
+	// RWMutexQueue documents that zero-value is ready to use
+	var q RWMutexQueue[int]
+
+	// Push on zero-value
+	q.Push(1, 2, 3)
+	assert.Equal(t, 3, q.Len())
+
+	// Peek should work
+	item, ok := q.Peek()
+	assert.True(t, ok)
+	assert.Equal(t, 1, item)
+
+	// Pop should work
+	item, ok = q.Pop()
+	assert.True(t, ok)
+	assert.Equal(t, 1, item)
+	assert.Equal(t, 2, q.Len())
+
+	// Read operations on empty zero-value
+	var q2 RWMutexQueue[string]
+	assert.Equal(t, 0, q2.Len())
+	_, ok = q2.Peek()
+	assert.False(t, ok)
+	_, ok = q2.Pop()
+	assert.False(t, ok)
+
+	// Clear on zero-value should not panic
+	var q3 RWMutexQueue[int]
+	q3.Clear()
+	assert.Equal(t, 0, q3.Len())
 }

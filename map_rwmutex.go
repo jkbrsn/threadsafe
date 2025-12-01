@@ -29,6 +29,9 @@ func (m *RWMutexMap[K, V]) Set(key K, value V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.values == nil {
+		m.values = make(map[K]V)
+	}
 	m.values[key] = value
 }
 
@@ -37,6 +40,9 @@ func (m *RWMutexMap[K, V]) Delete(key K) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.values == nil {
+		return
+	}
 	delete(m.values, key)
 }
 
@@ -62,6 +68,10 @@ func (m *RWMutexMap[K, V]) CompareAndSwap(key K, oldValue, newValue V) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.values == nil {
+		return false
+	}
+
 	current, exists := m.values[key]
 	if !exists {
 		// Handle case where key doesn't exist
@@ -84,6 +94,10 @@ func (m *RWMutexMap[K, V]) Swap(key K, value V) (V, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.values == nil {
+		m.values = make(map[K]V)
+	}
+
 	oldValue, loaded := m.values[key]
 	m.values[key] = value
 	if !loaded {
@@ -98,6 +112,10 @@ func (m *RWMutexMap[K, V]) Swap(key K, value V) (V, bool) {
 func (m *RWMutexMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if m.values == nil {
+		m.values = make(map[K]V)
+	}
 
 	if v, ok := m.values[key]; ok {
 		return v, true
@@ -150,6 +168,9 @@ func (m *RWMutexMap[K, V]) SetMany(entries map[K]V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.values == nil {
+		m.values = make(map[K]V)
+	}
 	maps.Insert(m.values, maps.All(entries))
 }
 
