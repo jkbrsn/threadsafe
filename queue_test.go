@@ -202,10 +202,10 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 
 	// Concurrent enqueues
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < perGoroutine; j++ {
+			for j := range perGoroutine {
 				q.Push(strconv.Itoa(id*perGoroutine + j))
 			}
 		}(i)
@@ -216,7 +216,7 @@ func testConcurrentQueueAccess(t *testing.T, q Queue[string]) {
 
 	// Now dequeue everything sequentially
 	total := goroutines * perGoroutine
-	for i := 0; i < total; i++ {
+	for range total {
 		item, ok := q.Pop()
 		assert.True(t, ok)
 		_ = item // value not important for this test
@@ -235,7 +235,7 @@ func TestQueueConcurrentRange(t *testing.T) {
 	q := NewRWMutexQueue[int]()
 
 	// Pre-populate the queue
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		q.Push(i)
 	}
 
@@ -245,7 +245,7 @@ func TestQueueConcurrentRange(t *testing.T) {
 	// Goroutine 1: Concurrent Range calls
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			count := 0
 			q.Range(func(int) bool {
 				count++
@@ -259,7 +259,7 @@ func TestQueueConcurrentRange(t *testing.T) {
 	// Goroutine 2: Concurrent Push operations
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			q.Push(i + 1000)
 		}
 	}()
@@ -267,11 +267,44 @@ func TestQueueConcurrentRange(t *testing.T) {
 	// Goroutine 3: Concurrent Pop operations
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			q.Pop()
 		}
 	}()
 
 	wg.Wait()
 	// Test should complete without data races
+}
+
+func TestRWMutexQueueZeroValue(t *testing.T) {
+	// RWMutexQueue documents that zero-value is ready to use
+	var q RWMutexQueue[int]
+
+	// Push on zero-value
+	q.Push(1, 2, 3)
+	assert.Equal(t, 3, q.Len())
+
+	// Peek should work
+	item, ok := q.Peek()
+	assert.True(t, ok)
+	assert.Equal(t, 1, item)
+
+	// Pop should work
+	item, ok = q.Pop()
+	assert.True(t, ok)
+	assert.Equal(t, 1, item)
+	assert.Equal(t, 2, q.Len())
+
+	// Read operations on empty zero-value
+	var q2 RWMutexQueue[string]
+	assert.Equal(t, 0, q2.Len())
+	_, ok = q2.Peek()
+	assert.False(t, ok)
+	_, ok = q2.Pop()
+	assert.False(t, ok)
+
+	// Clear on zero-value should not panic
+	var q3 RWMutexQueue[int]
+	q3.Clear()
+	assert.Equal(t, 0, q3.Len())
 }

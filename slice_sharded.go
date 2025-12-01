@@ -19,6 +19,9 @@ import (
 // across goroutines is not critical.
 //
 // All methods are wait-free with bounded work and require no global locks.
+//
+// The zero value defaults to a single shard for compatibility, though NewShardedSlice should
+// be used for performance-sensitive use cases to configure the optimal shard count.
 type ShardedSlice[T any] struct {
 	shards  []Slice[T]
 	counter uint64 // used for round-robin shard selection in Append
@@ -28,8 +31,17 @@ type ShardedSlice[T any] struct {
 // manner using an atomic counter.  This ensures good key distribution without
 // requiring hashing the items themselves.
 func (s *ShardedSlice[T]) Append(item ...T) {
+	s.ensureInitialized()
 	idx := int(atomic.AddUint64(&s.counter, 1)-1) % len(s.shards)
 	s.shards[idx].Append(item...)
+}
+
+// ensureInitialized lazily initializes the shards if needed for zero-value usage.
+func (s *ShardedSlice[T]) ensureInitialized() {
+	if s.shards == nil {
+		// Default to single shard for zero-value usage
+		s.shards = []Slice[T]{NewRWMutexSlice[T](0)}
+	}
 }
 
 // Len returns the combined length of all shards.

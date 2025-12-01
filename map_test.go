@@ -520,6 +520,87 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 }
 
+func TestMapZeroValue(t *testing.T) {
+	t.Run("RWMutexMap", func(t *testing.T) {
+		var m RWMutexMap[string, int]
+
+		// Set on zero-value should initialize map
+		m.Set("key1", 1)
+		m.Set("key2", 2)
+		assert.Equal(t, 2, m.Len())
+
+		// Get should work
+		val, ok := m.Get("key1")
+		assert.True(t, ok)
+		assert.Equal(t, 1, val)
+
+		// Delete should work
+		m.Delete("key1")
+		assert.Equal(t, 1, m.Len())
+
+		// Read operations on zero-value
+		var m2 RWMutexMap[int, string]
+		_, ok = m2.Get(999)
+		assert.False(t, ok)
+		assert.Equal(t, 0, m2.Len())
+
+		// Delete on zero-value with nil map
+		var m3 RWMutexMap[string, int]
+		m3.Delete("anything") // Should not panic
+		assert.Equal(t, 0, m3.Len())
+	})
+
+	t.Run("MutexMap", func(t *testing.T) {
+		var m MutexMap[string, int]
+
+		// Set on zero-value should initialize map
+		m.Set("key1", 1)
+		m.Set("key2", 2)
+		assert.Equal(t, 2, m.Len())
+
+		// Get should work
+		val, ok := m.Get("key1")
+		assert.True(t, ok)
+		assert.Equal(t, 1, val)
+
+		// Delete should work
+		m.Delete("key1")
+		assert.Equal(t, 1, m.Len())
+
+		// Read operations on zero-value
+		var m2 MutexMap[int, string]
+		_, ok = m2.Get(999)
+		assert.False(t, ok)
+		assert.Equal(t, 0, m2.Len())
+
+		// Delete on zero-value with nil map
+		var m3 MutexMap[string, int]
+		m3.Delete("anything") // Should not panic
+		assert.Equal(t, 0, m3.Len())
+	})
+
+	t.Run("SyncMap", func(t *testing.T) {
+		// SyncMap is already zero-value safe (sync.Map is zero-value safe)
+		var m SyncMap[string, int]
+
+		// Set on zero-value
+		m.Set("key1", 1)
+		m.Set("key2", 2)
+		assert.Equal(t, 2, m.Len())
+
+		// Get should work
+		val, ok := m.Get("key1")
+		assert.True(t, ok)
+		assert.Equal(t, 1, val)
+
+		// Read operations work on zero-value
+		var m2 SyncMap[int, string]
+		_, ok = m2.Get(999)
+		assert.False(t, ok)
+		assert.Equal(t, 0, m2.Len())
+	})
+}
+
 //
 // BENCHMARKS
 //
