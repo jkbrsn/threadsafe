@@ -240,11 +240,8 @@ func TestQueueConcurrentRange(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(3)
-
 	// Goroutine 1: Concurrent Range calls
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range 20 {
 			count := 0
 			q.Range(func(int) bool {
@@ -254,23 +251,21 @@ func TestQueueConcurrentRange(t *testing.T) {
 			// Verify we got some items (exact count may vary due to concurrent mutations)
 			assert.Greater(t, count, 0)
 		}
-	}()
+	})
 
 	// Goroutine 2: Concurrent Push operations
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for i := range 100 {
 			q.Push(i + 1000)
 		}
-	}()
+	})
 
 	// Goroutine 3: Concurrent Pop operations
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range 50 {
 			q.Pop()
 		}
-	}()
+	})
 
 	wg.Wait()
 	// Test should complete without data races
