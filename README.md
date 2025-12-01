@@ -1,8 +1,11 @@
-# threadsafe [![Go Documentation](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)][godocs]  [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)][license]
+# threadsafe
+
+[![Go Documentation](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)][godocs]
+[![Go Report Card](https://goreportcard.com/badge/github.com/jkbrsn/threadsafe)](https://goreportcard.com/report/github.com/jkbrsn/threadsafe)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)][license]
 
 [godocs]: http://godoc.org/github.com/jkbrsn/threadsafe
 [license]: /LICENSE
-
 
 The threadsafe package provides thread-safe operations for various data structures common in concurrent Go applications.
 
